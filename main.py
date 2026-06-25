@@ -1,7 +1,4 @@
-"""
-Main CLI Application untuk ConcertIn.
-Menyediakan antarmuka interaktif untuk pengguna sesuai skenario penggunaan.
-"""
+#front end
 
 import sys
 import os
@@ -19,31 +16,26 @@ from utils.exceptions import ConcertInException
 
 
 def clear_screen():
-    """Membersihkan layar terminal."""
     os.system('cls' if os.name == 'nt' else 'clear')
 
 
 def print_header(title):
-    """Mencetak header dengan format yang konsisten."""
     print("\n" + "=" * 60)
     print(f" {title:^58}")
     print("=" * 60)
 
 
 def print_separator():
-    """Mencetak garis pemisah."""
     print("-" * 60)
 
 
 def pause():
-    """Menjeda aplikasi hingga pengguna menekan Enter."""
     input("\nTekan Enter untuk melanjutkan...")
 
 
-# ── MENU UTAMA ──────────────────────────────────────────
+# ── MENU UTAMA
 
 def menu_utama():
-    """Menu utama aplikasi."""
     while True:
         clear_screen()
         print_header("SELAMAT DATANG DI CONCERTIN")
@@ -72,7 +64,6 @@ def menu_utama():
 
 
 def menu_login():
-    """Menu login pengguna."""
     print_header("LOGIN")
     try:
         email = input("Email    : ").strip()
@@ -89,16 +80,17 @@ def menu_login():
 
 
 def menu_register():
-    """Menu registrasi pengguna (otomatis sebagai customer)."""
     print_header("REGISTER")
     try:
         name = input("Nama lengkap  : ").strip()
         email = input("Email         : ").strip()
         password = input("Password      : ").strip()
+        # Sesuai ketentuan, registrasi baru otomatis menjadi customer
+        # Akun admin hanya 1 dan tidak bisa didaftarkan sembarangan
         role = "cust"
 
-        UserService.register(name, email, password, role)
-        print("\n[✓] Registrasi berhasil! Silakan login.")
+        user = UserService.register(name, email, password, role)
+        print(f"\n[✓] Registrasi berhasil! Silakan login.")
     except ConcertInException as e:
         print(f"\n[✗] {e}")
     pause()
@@ -107,18 +99,6 @@ def menu_register():
 # ── MENU CUSTOMER ───────────────────────────────────────
 
 def menu_customer(user):
-    """Menu untuk role customer."""
-    menu_options = {
-        "1": lihat_semua_konser,
-        "2": cari_konser,
-        "3": detail_konser,
-        "4": lambda: pesan_tiket(user),
-        "5": lambda: bayar_pesanan(user),
-        "6": lambda: tiket_saya(user),
-        "7": lambda: riwayat_pesanan(user),
-        "8": lambda: batalkan_pesanan(user),
-    }
-
     while True:
         clear_screen()
         print_header("MENU CUSTOMER")
@@ -136,15 +116,27 @@ def menu_customer(user):
 
         pilihan = input("Pilih menu: ").strip()
 
-        if pilihan == "0":
+        if pilihan == "1":
+            lihat_semua_konser()
+        elif pilihan == "2":
+            cari_konser()
+        elif pilihan == "3":
+            detail_konser()
+        elif pilihan == "4":
+            pesan_tiket(user)
+        elif pilihan == "5":
+            bayar_pesanan(user)
+        elif pilihan == "6":
+            tiket_saya(user)
+        elif pilihan == "7":
+            riwayat_pesanan(user)
+        elif pilihan == "8":
+            batalkan_pesanan(user)
+        elif pilihan == "0":
             user.logout()
             print("\n[✓] Logout berhasil.")
             pause()
             return
-
-        action = menu_options.get(pilihan)
-        if action:
-            action()
         else:
             print("\n[!] Pilihan tidak valid.")
             pause()
@@ -153,23 +145,6 @@ def menu_customer(user):
 # ── MENU ADMIN ──────────────────────────────────────────
 
 def menu_admin(user):
-    """Menu untuk role admin."""
-    menu_options = {
-        "1": lihat_semua_konser,
-        "2": cari_konser,
-        "3": detail_konser,
-        "4": lambda: pesan_tiket(user),
-        "5": lambda: bayar_pesanan(user),
-        "6": lambda: tiket_saya(user),
-        "7": lambda: riwayat_pesanan(user),
-        "8": lambda: batalkan_pesanan(user),
-        "9": tambah_konser,
-        "10": tambah_tiket,
-        "11": lihat_semua_order,
-        "12": validasi_tiket,
-        "13": lihat_statistik,
-    }
-
     while True:
         clear_screen()
         print_header("MENU ADMIN")
@@ -192,15 +167,37 @@ def menu_admin(user):
 
         pilihan = input("Pilih menu: ").strip()
 
-        if pilihan == "0":
+        if pilihan == "1":
+            lihat_semua_konser()
+        elif pilihan == "2":
+            cari_konser()
+        elif pilihan == "3":
+            detail_konser()
+        elif pilihan == "4":
+            pesan_tiket(user)
+        elif pilihan == "5":
+            bayar_pesanan(user)
+        elif pilihan == "6":
+            tiket_saya(user)
+        elif pilihan == "7":
+            riwayat_pesanan(user)
+        elif pilihan == "8":
+            batalkan_pesanan(user)
+        elif pilihan == "9":
+            tambah_konser()
+        elif pilihan == "10":
+            tambah_tiket()
+        elif pilihan == "11":
+            lihat_semua_order()
+        elif pilihan == "12":
+            validasi_tiket()
+        elif pilihan == "13":
+            lihat_statistik()
+        elif pilihan == "0":
             user.logout()
             print("\n[✓] Logout berhasil.")
             pause()
             return
-
-        action = menu_options.get(pilihan)
-        if action:
-            action()
         else:
             print("\n[!] Pilihan tidak valid.")
             pause()
@@ -209,7 +206,6 @@ def menu_admin(user):
 # ── IMPLEMENTASI FITUR CUSTOMER ─────────────────────────
 
 def lihat_semua_konser():
-    """Menampilkan semua konser yang ada."""
     print_header("DAFTAR SEMUA KONSER")
     try:
         concerts = ConcertService.get_all_concerts()
@@ -230,7 +226,6 @@ def lihat_semua_konser():
 
 
 def cari_konser():
-    """Mencari konser berdasarkan keyword."""
     print_header("CARI KONSER")
     try:
         keyword = input("Masukkan keyword (judul/artis/venue/genre): ").strip()
@@ -246,35 +241,16 @@ def cari_konser():
     pause()
 
 
-def _pilih_konser():
-    """Helper untuk memilih konser dari daftar."""
-    concerts = ConcertService.get_all_concerts()
-    if not concerts:
-        print("\nBelum ada konser terdaftar.")
-        return None
-
-    for i, c in enumerate(concerts, 1):
-        print(f"[{i}] {c.title}")
-
-    try:
-        idx = int(input("\nPilih nomor konser: ")) - 1
-        if 0 <= idx < len(concerts):
-            return concerts[idx]
-        print("\n[!] Pilihan di luar jangkauan.")
-    except ValueError:
-        print("\n[!] Input harus berupa angka.")
-    return None
-
-
 def detail_konser():
-    """Menampilkan detail dan tiket konser."""
     print_header("DETAIL KONSER")
     try:
-        c = _pilih_konser()
-        if not c:
-            pause()
-            return
+        concerts = ConcertService.get_all_concerts()
+        for i, c in enumerate(concerts, 1):
+            print(f"[{i}] {c.title}")
 
+        idx = int(input("\nPilih nomor konser: ")) - 1
+        c = concerts[idx]
+        
         print_separator()
         print(f"JUDUL   : {c.title}")
         print(f"ARTIS   : {', '.join(c.artistLineup)}")
@@ -283,26 +259,27 @@ def detail_konser():
         print(f"GENRE   : {c.genre}")
         print(f"STATUS  : {c.status}")
         print("\nTIKET TERSEDIA:")
-
+        
         tickets = TicketService.get_tickets_by_concert(c.concertId)
         if not tickets:
             print("Belum ada tiket.")
         else:
             for t in tickets:
                 print(f"- {t.category:4} : Rp{t.price:,.0f} (Sisa: {t.remainingQuota})")
-    except ConcertInException as e:
-         print(f"\n[✗] {e}")
+    except Exception:
+        print("\n[!] Input tidak valid atau terjadi kesalahan.")
     pause()
 
 
 def pesan_tiket(user):
-    """Proses pemesanan tiket oleh user."""
     print_header("PESAN TIKET")
     try:
-        c = _pilih_konser()
-        if not c:
-            pause()
-            return
+        concerts = ConcertService.get_all_concerts()
+        for i, c in enumerate(concerts, 1):
+            print(f"[{i}] {c.title}")
+
+        idx = int(input("\nPilih konser: ")) - 1
+        c = concerts[idx]
 
         tickets = TicketService.get_tickets_by_concert(c.concertId)
         if not tickets:
@@ -314,22 +291,10 @@ def pesan_tiket(user):
         for i, t in enumerate(tickets, 1):
             print(f"[{i}] {t.category} (Rp{t.price:,.0f}) - Sisa: {t.remainingQuota}")
 
-        try:
-            t_idx = int(input("Pilih kategori: ")) - 1
-            if not (0 <= t_idx < len(tickets)):
-                print("\n[!] Pilihan di luar jangkauan.")
-                pause()
-                return
-            t = tickets[t_idx]
-            qty = int(input("Jumlah tiket  : "))
-            if qty <= 0:
-                print("\n[!] Jumlah tiket harus positif.")
-                pause()
-                return
-        except ValueError:
-            print("\n[!] Input tidak valid.")
-            pause()
-            return
+        t_idx = int(input("Pilih kategori: ")) - 1
+        t = tickets[t_idx]
+
+        qty = int(input("Jumlah tiket  : "))
 
         # Ringkasan Pesanan
         subtotal = t.price * qty
@@ -352,46 +317,32 @@ def pesan_tiket(user):
             print("\n[i] Pemesanan dibatalkan.")
     except ConcertInException as e:
         print(f"\n[✗] {e}")
+    except Exception:
+        print("\n[!] Terjadi kesalahan input.")
     pause()
 
 
-def _pilih_pesanan(user, status_filter=None):
-    """Helper untuk memilih pesanan dari daftar user."""
-    orders = OrderService.get_orders_by_user(user.userId)
-    if status_filter:
-        orders = [o for o in orders if o.status == status_filter]
-
-    if not orders:
-        status_msg = status_filter if status_filter else "semua"
-        print(f"Tidak ada pesanan ({status_msg}).")
-        return None
-
-    for i, o in enumerate(orders, 1):
-        print(f"[{i}] Order ID: {o.orderId} | Total: Rp{o.totalAmount:,.0f} | Status: {o.status.upper()}")
-
-    try:
-        idx = int(input("\nPilih pesanan: ")) - 1
-        if 0 <= idx < len(orders):
-            return orders[idx]
-        print("\n[!] Pilihan di luar jangkauan.")
-    except ValueError:
-        print("\n[!] Input harus berupa angka.")
-    return None
-
-
 def bayar_pesanan(user):
-    """Proses pembayaran pesanan pending."""
     print_header("BAYAR PESANAN")
     try:
-        o = _pilih_pesanan(user, "pending")
-        if not o:
+        orders = OrderService.get_orders_by_user(user.userId)
+        pending = [o for o in orders if o.status == "pending"]
+
+        if not pending:
+            print("Tidak ada pesanan pending.")
             pause()
             return
 
+        for i, o in enumerate(pending, 1):
+            print(f"[{i}] Order ID: {o.orderId} | Total: Rp{o.totalAmount:,.0f}")
+
+        idx = int(input("\nPilih pesanan: ")) - 1
+        o = pending[idx]
+
         print("\nMetode Pembayaran:")
         print("1. Transfer Bank\n2. E-Wallet\n3. QRIS")
-        metode_map = {"1": "transfer", "2": "ewallet", "3": "qris"}
-        metode = metode_map.get(input("Pilih metode: ").strip())
+        m_idx = input("Pilih metode: ")
+        metode = {"1": "transfer", "2": "ewallet", "3": "qris"}.get(m_idx)
 
         if not metode:
             print("\n[!] Metode tidak valid.")
@@ -401,7 +352,7 @@ def bayar_pesanan(user):
         payment = PaymentService.process_payment(o.orderId, metode)
         print(f"\n[✓] Pembayaran BERHASIL!")
         print(f"    Payment ID : {payment.paymentId}")
-
+        
         # Tampilkan Tiket Digital
         print_separator()
         print("🎫 TIKET DIGITAL ANDA 🎫")
@@ -417,11 +368,12 @@ def bayar_pesanan(user):
             print("-" * 30)
     except ConcertInException as e:
         print(f"\n[✗] {e}")
+    except Exception:
+        print("\n[!] Terjadi kesalahan input.")
     pause()
 
 
 def tiket_saya(user):
-    """Menampilkan tiket digital dari pesanan yang sudah dibayar."""
     print_header("TIKET SAYA")
     try:
         orders = OrderService.get_orders_by_user(user.userId)
@@ -434,12 +386,14 @@ def tiket_saya(user):
                 concert = ConcertService.get_concert_by_id(o.concertId)
                 items = OrderItem.get_by_order(o.orderId)
                 for item in items:
+                    # Ambil informasi tiket
                     ticket = TicketService.get_ticket_by_id(item.ticketId)
+                    
                     print(f"🎫 KODE: {item.itemId}")
                     print(f"   Konser  : {concert.title}")
                     print(f"   Kategori: {ticket.category}")
                     print(f"   Jumlah  : {item.quantity}")
-                    print(f"   Status  : {'Digunakan' if hasattr(item, 'status') and item.status == 'used' else 'Valid'}")
+                    print(f"   Status  : Valid")
                     print()
     except ConcertInException as e:
         print(f"\n[✗] {e}")
@@ -447,7 +401,6 @@ def tiket_saya(user):
 
 
 def riwayat_pesanan(user):
-    """Menampilkan riwayat pesanan user."""
     print_header("RIWAYAT PESANAN")
     try:
         orders = OrderService.get_orders_by_user(user.userId)
@@ -467,32 +420,41 @@ def riwayat_pesanan(user):
 
 
 def batalkan_pesanan(user):
-    """Membatalkan pesanan yang masih pending."""
     print_header("BATALKAN PESANAN")
     try:
-        o = _pilih_pesanan(user, "pending")
-        if not o:
+        orders = OrderService.get_orders_by_user(user.userId)
+        pending = [o for o in orders if o.status == "pending"]
+
+        if not pending:
+            print("Tidak ada pesanan pending.")
             pause()
             return
 
-        yakin = input("Yakin batalkan? (y/n): ").strip().lower()
+        for i, o in enumerate(pending, 1):
+            print(f"[{i}] Order ID: {o.orderId} | Total: Rp{o.totalAmount:,.0f}")
+
+        idx = int(input("\nPilih pesanan yang akan dibatalkan: ")) - 1
+        o = pending[idx]
+
+        yakin = input("Yakin batalkan? (y/n): ").lower()
         if yakin == 'y':
             OrderService.cancel_order(o.orderId)
             print("\n[✓] Pesanan berhasil dibatalkan. Kuota tiket dikembalikan.")
     except ConcertInException as e:
         print(f"\n[✗] {e}")
+    except Exception:
+        print("\n[!] Input tidak valid.")
     pause()
 
 
 # ── IMPLEMENTASI FITUR ADMIN ────────────────────────────
 
 def tambah_konser():
-    """Admin: Menambah konser baru."""
     print_header("TAMBAH KONSER BARU")
     try:
         title = input("Judul konser         : ").strip()
         artists_str = input("Artis (pisah koma)   : ").strip()
-        artistLineup = [a.strip() for a in artists_str.split(",") if a.strip()]
+        artistLineup = [a.strip() for a in artists_str.split(",")]
         venueName = input("Nama venue           : ").strip()
         venueAddress = input("Alamat venue         : ").strip()
         dateTimeStr = input("Tanggal (YYYY-MM-DD HH:MM): ").strip()
@@ -514,23 +476,18 @@ def tambah_konser():
 
 
 def tambah_tiket():
-    """Admin: Menambah tiket untuk konser tertentu."""
     print_header("TAMBAH TIKET")
     try:
-        c = _pilih_konser()
-        if not c:
-            pause()
-            return
+        concerts = ConcertService.get_all_concerts()
+        for i, c in enumerate(concerts, 1):
+            print(f"[{i}] {c.title}")
 
-        category = input("Kategori (VIP/REG): ").strip().upper()
-        
-        try:
-            price = float(input("Harga tiket       : "))
-            totalQuota = int(input("Total kuota       : "))
-        except ValueError:
-            print("\n[!] Input harga atau kuota tidak valid (harus angka).")
-            pause()
-            return
+        idx = int(input("\nPilih konser: ")) - 1
+        c = concerts[idx]
+
+        category = input("Kategori (VIP/REG): ").upper()
+        price = float(input("Harga tiket       : "))
+        totalQuota = int(input("Total kuota       : "))
 
         ticket = TicketService.create_ticket({
             "concertId": c.concertId,
@@ -542,16 +499,15 @@ def tambah_tiket():
         print(f"\n[✓] Tiket {ticket.category} berhasil ditambahkan!")
     except ConcertInException as e:
         print(f"\n[✗] {e}")
+    except Exception:
+        print("\n[!] Input tidak valid.")
     pause()
 
 
 def lihat_semua_order():
-    """Admin: Melihat semua pesanan di sistem."""
     print_header("SEMUA ORDER")
     try:
         orders = OrderService.get_all_orders()
-        if not orders:
-            print("Belum ada order dalam sistem.")
         for o in orders:
             print(f"Order ID : {o.orderId}")
             print(f"User ID  : {o.userId}")
@@ -564,11 +520,10 @@ def lihat_semua_order():
 
 
 def validasi_tiket():
-    """Admin: Memvalidasi tiket saat di venue."""
     print_header("VALIDASI TIKET DI VENUE")
     try:
         kode = input("Masukkan kode tiket (Item ID): ").strip()
-
+        
         # Validasi dengan update status langsung di JSON order_items.json
         items_data = JsonRepository.find_all("order_items.json")
         found = False
@@ -583,7 +538,7 @@ def validasi_tiket():
                     JsonRepository.save("order_items.json", items_data)
                     print("\n[✓] Tiket VALID. Berhasil divalidasi dan ditandai 'used'.")
                 break
-
+        
         if not found:
             print("\n[✗] Kode tiket tidak ditemukan.")
     except Exception as e:
@@ -592,7 +547,6 @@ def validasi_tiket():
 
 
 def lihat_statistik():
-    """Admin: Melihat statistik umum sistem."""
     print_header("STATISTIK SISTEM")
     try:
         u_stats = UserService.get_statistics()
@@ -611,8 +565,6 @@ def lihat_statistik():
 
 
 if __name__ == "__main__":
-    try:
-        menu_utama()
-    except KeyboardInterrupt:
-        print("\n\n[i] Aplikasi dihentikan pengguna.")
-        sys.exit(0)
+    menu_utama()
+
+#aaa

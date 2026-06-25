@@ -1,383 +1,350 @@
-// State
-let currentUser = null;
-try {
-    currentUser = JSON.parse(localStorage.getItem('concertin_user'));
-} catch (e) {
-    currentUser = null;
+/**
+ * ConcertIn Frontend Application (OOP Architecture)
+ * Mengelola state autentikasi, rendering konser, dan interaksi user.
+ */
+
+// ── Auth Manager (Singleton) ────────────────────────────
+class AuthManager {
+    static KEY = 'concertin_user';
+
+    static getUser() {
+        try {
+            const raw = localStorage.getItem(AuthManager.KEY);
+            return raw ? JSON.parse(raw) : null;
+        } catch { return null; }
+    }
+
+    static setUser(user) {
+        localStorage.setItem(AuthManager.KEY, JSON.stringify(user));
+    }
+
+    static logout() {
+        localStorage.removeItem(AuthManager.KEY);
+    }
+
+    static isLoggedIn() {
+        return AuthManager.getUser() !== null;
+    }
+
+    static requireAuth(redirectUrl) {
+        if (!AuthManager.isLoggedIn()) {
+            LoginGuardModal.show(redirectUrl);
+            return false;
+        }
+        return true;
+    }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    updateNav();
-    
-    // Auto Back Button
-    if (window.location.pathname !== '/' && !window.location.pathname.endsWith('index.html')) {
-        if (!window.location.pathname.endsWith('login.html') && !window.location.pathname.endsWith('register.html')) {
-            const backBtn = document.createElement('button');
-            backBtn.className = 'btn btn-outline';
-            backBtn.innerHTML = '<i class="fas fa-arrow-left"></i> Kembali';
-            backBtn.style.cssText = 'position: fixed; bottom: 2rem; left: 2rem; z-index: 1000; background: rgba(31, 40, 51, 0.9); backdrop-filter: blur(10px); box-shadow: 0 5px 15px rgba(0,0,0,0.5);';
-            backBtn.onclick = () => history.back();
-            document.body.appendChild(backBtn);
+// ── Toast Notification ──────────────────────────────────
+class Toast {
+    static container = null;
+
+    static init() {
+        if (!Toast.container) {
+            Toast.container = document.createElement('div');
+            Toast.container.className = 'toast-container';
+            document.body.appendChild(Toast.container);
         }
     }
-    
-    // Login form
-    const loginForm = document.getElementById('loginForm');
-    if (loginForm) {
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            try {
-                const res = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
+
+    static show(message, type = 'info', duration = 3500) {
+        Toast.init();
+        const el = document.createElement('div');
+        el.className = `toast ${type}`;
+        el.textContent = message;
+        Toast.container.appendChild(el);
+        setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, duration);
+    }
+
+    static success(msg) { Toast.show(msg, 'success'); }
+    static error(msg) { Toast.show(msg, 'error'); }
+    static info(msg) { Toast.show(msg, 'info'); }
+}
+
+// ── Login Guard Modal ───────────────────────────────────
+class LoginGuardModal {
+    static overlay = null;
+
+    static init() {
+        if (LoginGuardModal.overlay) return;
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.id = 'loginGuardModal';
+        overlay.innerHTML = `
+            <div class="modal">
+                <i class="fas fa-lock modal-icon"></i>
+                <h2>Login Diperlukan</h2>
+                <p>Kamu harus masuk ke akun terlebih dahulu untuk memesan tiket konser.</p>
+                <div class="modal-actions">
+                    <button class="btn btn-primary" id="modalLoginBtn"><i class="fas fa-right-to-bracket"></i> Masuk</button>
+                    <button class="btn btn-ghost" id="modalRegisterBtn"><i class="fas fa-user-plus"></i> Daftar</button>
+                    <button class="btn btn-ghost" id="modalCloseBtn"><i class="fas fa-xmark"></i> Tutup</button>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+        LoginGuardModal.overlay = overlay;
+
+        overlay.querySelector('#modalCloseBtn').addEventListener('click', () => LoginGuardModal.hide());
+        overlay.querySelector('#modalLoginBtn').addEventListener('click', () => { window.location.href = 'login.html'; });
+        overlay.querySelector('#modalRegisterBtn').addEventListener('click', () => { window.location.href = 'register.html'; });
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) LoginGuardModal.hide(); });
+    }
+
+    static show() { LoginGuardModal.init(); LoginGuardModal.overlay.classList.add('active'); }
+    static hide() { if (LoginGuardModal.overlay) LoginGuardModal.overlay.classList.remove('active'); }
+}
+
+// ── API Client ──────────────────────────────────────────
+class APIClient {
+    static BASE = '';
+
+    static async request(url, options = {}) {
+        try {
+            const res = await fetch(APIClient.BASE + url, {
+                headers: { 'Content-Type': 'application/json' },
+                ...options
+            });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || 'Terjadi kesalahan.');
+            return data;
+        } catch (err) {
+            throw err;
+        }
+    }
+
+    static get(url) { return APIClient.request(url); }
+    static post(url, body) { return APIClient.request(url, { method: 'POST', body: JSON.stringify(body) }); }
+}
+
+// ── Navbar Renderer ─────────────────────────────────────
+class NavbarRenderer {
+    static update() {
+        const actionsContainer = document.querySelector('.nav-actions');
+        if (!actionsContainer) return;
+
+        const user = AuthManager.getUser();
+        if (user) {
+            actionsContainer.innerHTML = `
+                <div class="nav-user">
+                    <span class="nav-user-name"><i class="fas fa-user-circle"></i> ${user.name}</span>
+                </div>
+                <button class="btn btn-ghost btn-sm" onclick="window.location.href='orders.html'">
+                    <i class="fas fa-receipt"></i> Pesanan
+                </button>
+                <button class="btn btn-ghost btn-sm" id="logoutBtn">
+                    <i class="fas fa-right-from-bracket"></i> Keluar
+                </button>`;
+            document.getElementById('logoutBtn')?.addEventListener('click', () => {
+                AuthManager.logout();
+                Toast.success('Berhasil logout!');
+                setTimeout(() => window.location.reload(), 500);
+            });
+        } else {
+            actionsContainer.innerHTML = `
+                <button class="btn btn-ghost" onclick="window.location.href='login.html'">
+                    <i class="fas fa-right-to-bracket"></i> Masuk
+                </button>
+                <button class="btn btn-primary" onclick="window.location.href='register.html'">
+                    <i class="fas fa-user-plus"></i> Daftar
+                </button>`;
+        }
+    }
+}
+
+// ── Concert Renderer (for index page) ───────────────────
+class ConcertApp {
+    constructor() {
+        this.concerts = [];
+        this.activeGenre = 'all';
+        this.searchKeyword = '';
+    }
+
+    async init() {
+        NavbarRenderer.update();
+        this.bindEvents();
+        await this.loadConcerts();
+    }
+
+    bindEvents() {
+        const navbar = document.getElementById('navbar');
+        const navToggle = document.getElementById('navToggle');
+        const navMenu = document.getElementById('navMenu');
+        const searchForm = document.getElementById('searchForm');
+        const searchInput = document.getElementById('searchInput');
+        const genreFilter = document.getElementById('genreFilter');
+        const filterTabs = document.getElementById('filterTabs');
+
+        if (navbar) {
+            window.addEventListener('scroll', () => navbar.classList.toggle('scrolled', window.scrollY > 30));
+        }
+        if (navToggle && navMenu) {
+            navToggle.addEventListener('click', () => {
+                const isOpen = navMenu.classList.toggle('open');
+                navToggle.setAttribute('aria-expanded', isOpen);
+                navToggle.innerHTML = `<i class="fas fa-${isOpen ? 'xmark' : 'bars'}"></i>`;
+            });
+            document.querySelectorAll('.nav-links a').forEach(link => {
+                link.addEventListener('click', () => {
+                    navMenu.classList.remove('open');
+                    navToggle.setAttribute('aria-expanded', 'false');
+                    navToggle.innerHTML = '<i class="fas fa-bars"></i>';
                 });
-                const data = await res.json();
-                if (data.success) {
-                    localStorage.setItem('concertin_user', JSON.stringify(data.data));
-                    window.location.href = 'index.html';
-                } else {
-                    alert(`Login gagal: ${data.message}`);
-                }
-            } catch (err) {
-                alert("Kesalahan jaringan.");
-            }
+            });
+        }
+        if (searchInput) {
+            searchInput.addEventListener('input', () => { this.searchKeyword = searchInput.value; this.renderConcerts(); });
+        }
+        if (genreFilter) {
+            genreFilter.addEventListener('change', (e) => this.setActiveGenre(e.target.value));
+        }
+        if (filterTabs) {
+            filterTabs.addEventListener('click', (e) => {
+                const tab = e.target.closest('[data-genre]');
+                if (tab) this.setActiveGenre(tab.dataset.genre);
+            });
+        }
+        if (searchForm) {
+            searchForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                document.getElementById('concerts')?.scrollIntoView({ behavior: 'smooth' });
+            });
+        }
+    }
+
+    async loadConcerts() {
+        const grid = document.getElementById('concertGrid');
+        if (!grid) return;
+        grid.innerHTML = '<div class="spinner"></div>';
+
+        try {
+            const data = await APIClient.get('/api/concerts');
+            this.concerts = data.concerts || [];
+            this.renderGenreControls();
+            this.renderConcerts();
+        } catch (err) {
+            // Fallback to static data if API is not running
+            this.concerts = ConcertApp.FALLBACK_DATA;
+            this.renderGenreControls();
+            this.renderConcerts();
+        }
+    }
+
+    setActiveGenre(genre) {
+        this.activeGenre = genre;
+        const genreFilter = document.getElementById('genreFilter');
+        if (genreFilter) genreFilter.value = genre;
+        this.renderGenreControls();
+        this.renderConcerts();
+    }
+
+    getGenres() {
+        return ['all', ...new Set(this.concerts.map(c => c.genre))];
+    }
+
+    renderGenreControls() {
+        const genres = this.getGenres();
+        const genreFilter = document.getElementById('genreFilter');
+        const filterTabs = document.getElementById('filterTabs');
+
+        if (genreFilter) {
+            genreFilter.innerHTML = genres.map(g => `<option value="${g}">${g === 'all' ? 'Semua genre' : g}</option>`).join('');
+            genreFilter.value = this.activeGenre;
+        }
+        if (filterTabs) {
+            filterTabs.innerHTML = genres.map(g => `
+                <button class="filter-tab ${g === this.activeGenre ? 'active' : ''}" type="button" data-genre="${g}">
+                    ${g === 'all' ? 'Semua' : g}
+                </button>`).join('');
+        }
+    }
+
+    getFilteredConcerts() {
+        const kw = this.searchKeyword.toLowerCase().trim();
+        return this.concerts.filter(c => {
+            const searchable = `${c.title} ${(c.artistLineup || c.artists || []).join(' ')} ${c.venueName || c.venue || ''} ${c.genre}`.toLowerCase();
+            const matchKw = !kw || searchable.includes(kw);
+            const matchGenre = this.activeGenre === 'all' || c.genre === this.activeGenre;
+            return matchKw && matchGenre;
         });
     }
 
-    // Register form
-    const registerForm = document.getElementById('registerForm');
-    if (registerForm) {
-        registerForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const name = document.getElementById('regName').value;
-            const email = document.getElementById('regEmail').value;
-            const password = document.getElementById('regPassword').value;
-            try {
-                const res = await fetch('/api/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, email, password })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    alert('Registrasi berhasil! Silakan login.');
-                    window.location.href = 'login.html';
-                } else {
-                    alert(`Registrasi gagal: ${data.message}`);
+    renderConcerts() {
+        const grid = document.getElementById('concertGrid');
+        const emptyState = document.getElementById('emptyState');
+        if (!grid) return;
+
+        const filtered = this.getFilteredConcerts();
+        const icons = ['fas fa-music', 'fas fa-guitar', 'fas fa-record-vinyl', 'fas fa-headphones', 'fas fa-microphone'];
+
+        grid.innerHTML = filtered.map((c, i) => {
+            const artists = c.artistLineup ? c.artistLineup.join(', ') : (c.artists || '');
+            const venue = c.venueName || c.venue || '';
+            const city = c.venueAddress || c.city || '';
+            const dateStr = c.dateTime || c.date || '';
+            const d = new Date(dateStr);
+            const day = isNaN(d) ? '?' : d.getDate();
+            const month = isNaN(d) ? '' : d.toLocaleString('id-ID', { month: 'short' });
+            const price = c.minPrice ? `Rp${c.minPrice.toLocaleString('id-ID')}` : (c.price || 'Rp0');
+            const slots = c.totalSlots ?? c.slots ?? 0;
+            const concertId = c.concertId || '';
+            const icon = icons[i % icons.length];
+
+            return `
+                <article class="concert-card">
+                    <div class="card-top alt-${i % 3}">
+                        <div class="concert-date"><strong>${day}</strong><small>${month}</small></div>
+                        <i class="${icon}"></i>
+                    </div>
+                    <div class="card-body">
+                        <div>
+                            <span class="genre-pill">${c.genre}</span>
+                            <h3 class="concert-title">${c.title}</h3>
+                        </div>
+                        <p class="card-meta"><i class="fas fa-users"></i><span>${artists}</span></p>
+                        <p class="card-meta"><i class="fas fa-location-dot"></i><span>${venue}${city ? ', ' + city : ''}</span></p>
+                        <div class="ticket-row">
+                            <div>
+                                <span class="price">Mulai dari <strong>${price}</strong></span>
+                                <span class="availability">${slots} tiket tersedia</span>
+                            </div>
+                            <button class="btn btn-soft btn-sm" data-book-concert="${concertId}" data-book-title="${c.title}">
+                                <i class="fas fa-ticket"></i> Beli
+                            </button>
+                        </div>
+                    </div>
+                </article>`;
+        }).join('');
+
+        if (emptyState) emptyState.classList.toggle('show', filtered.length === 0);
+
+        // Bind buy buttons — require auth
+        grid.querySelectorAll('[data-book-concert]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const cid = btn.dataset.bookConcert;
+                const title = btn.dataset.bookTitle;
+                if (AuthManager.requireAuth()) {
+                    window.location.href = `booking.html?concertId=${encodeURIComponent(cid)}&concert=${encodeURIComponent(title)}`;
                 }
-            } catch (err) {
-                alert("Kesalahan jaringan.");
-            }
+            });
         });
     }
 
-    // Admin Register form
-    const adminRegisterForm = document.getElementById('adminRegisterForm');
-    if (adminRegisterForm) {
-        adminRegisterForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const name = document.getElementById('adminRegName').value;
-            const email = document.getElementById('adminRegEmail').value;
-            const password = document.getElementById('adminRegPassword').value;
-            const role = document.getElementById('adminRegRole').value;
-            try {
-                const res = await fetch('/api/admin/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, email, password, role })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    alert(`Registrasi akun ${role} berhasil!`);
-                    adminRegisterForm.reset();
-                } else {
-                    alert(`Registrasi gagal: ${data.message}`);
-                }
-            } catch (err) {
-                alert("Kesalahan jaringan.");
-            }
-        });
-    }
+    // Fallback data when API isn't running
+    static FALLBACK_DATA = [
+        { title: 'Java Jazz Festival 2026', artistLineup: ['Tulus', 'Ardhito Pramono', 'Nadin Amizah'], venueName: 'JIExpo Kemayoran', venueAddress: 'Jakarta', dateTime: '2026-08-15T19:00:00', genre: 'Jazz', minPrice: 850000, totalSlots: 124, concertId: '' },
+        { title: 'Rockdut Fest', artistLineup: ['Denny Caknan', 'Mahalini', 'Fiersa Besari'], venueName: 'Stadion GBK', venueAddress: 'Jakarta', dateTime: '2026-09-20T19:00:00', genre: 'Pop', minPrice: 450000, totalSlots: 89, concertId: '' },
+        { title: 'Indie Showcase Night', artistLineup: ['Hindia', 'Reality Club', 'Lomba Sihir'], venueName: 'Tennis Indoor Senayan', venueAddress: 'Jakarta', dateTime: '2026-10-05T19:00:00', genre: 'Indie', minPrice: 375000, totalSlots: 56, concertId: '' },
+        { title: 'Electro Pulse Arena', artistLineup: ['Dipha Barus', 'Weird Genius', 'Bleu Clair'], venueName: 'Beach City International Stadium', venueAddress: 'Jakarta', dateTime: '2026-11-22T19:00:00', genre: 'EDM', minPrice: 620000, totalSlots: 73, concertId: '' }
+    ];
+}
 
-    // Index page load
-    const concertGrid = document.getElementById('concertGrid');
-    if (concertGrid) {
-        loadConcertsHome();
+// ── Auto-init berdasarkan halaman ───────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    const page = document.body.dataset.page;
+
+    if (page === 'home') {
+        new ConcertApp().init();
+    } else {
+        NavbarRenderer.update();
     }
 });
-
-function updateNav() {
-    const navActions = document.getElementById('navActions');
-    if (!navActions) return;
-    
-    if (currentUser) {
-        let adminLink = '';
-        if (currentUser.role === 'admin') {
-            adminLink = `<a href="admin.html" style="color: var(--accent); margin-right: 15px; font-weight: 600; text-decoration: none;"><i class="fas fa-user-shield"></i> Admin Panel</a>`;
-        }
-        navActions.innerHTML = `
-            ${adminLink}
-            <a href="tickets.html" style="color: var(--accent); margin-right: 15px; font-weight: 600; text-decoration: none;"><i class="fas fa-ticket-alt"></i> Tiket Saya</a>
-            <span style="color: white; margin-right: 15px; font-weight: 600;">Hi, ${currentUser.name}</span>
-            <button class="btn btn-outline" onclick="logout()">Keluar</button>
-        `;
-    } else {
-        navActions.innerHTML = `
-            <a href="login.html" class="btn btn-outline" style="margin-right: 10px;">Masuk</a>
-            <a href="register.html" class="btn btn-primary">Daftar</a>
-        `;
-    }
-}
-
-function logout() {
-    localStorage.removeItem('concertin_user');
-    window.location.href = 'index.html';
-}
-
-async function loadConcertsHome() {
-    const grid = document.getElementById('concertGrid');
-    grid.innerHTML = '<p style="color:white; text-align:center; width:100%;">Memuat data...</p>';
-    try {
-        const res = await fetch('/api/concerts');
-        const data = await res.json();
-        if (data.success && data.data.length > 0) {
-            grid.innerHTML = '';
-            data.data.forEach(c => {
-                const dateObj = new Date(c.dateTime);
-                const dateStr = dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-                grid.innerHTML += `
-                    <div class="concert-card" onclick="window.location.href='detail.html?id=${c.concertId}'">
-                        <div class="date-badge">${dateStr}</div>
-                        <span class="concert-genre">${c.genre}</span>
-                        <h3 class="concert-title">${c.title}</h3>
-                        <div class="concert-artists"><i class="fas fa-users"></i> ${c.artistLineup.join(', ')}</div>
-                        <div class="concert-venue"><i class="fas fa-map-marker-alt"></i> ${c.venueName}</div>
-                        <div class="card-footer">
-                            <span class="status ${c.status}">${c.status.toUpperCase()}</span>
-                            <span class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.9rem;">Lihat Detail</span>
-                        </div>
-                    </div>
-                `;
-            });
-        } else {
-            grid.innerHTML = '<p style="color:white;">Belum ada jadwal konser.</p>';
-        }
-    } catch (e) {
-        grid.innerHTML = '<p style="color:red; text-align:center; width:100%;">Gagal memuat konser. Pastikan server aktif.</p>';
-    }
-}
-
-// Detail page functions
-let currentConcert = null;
-async function loadConcertDetail() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const id = urlParams.get('id');
-    if (!id) return window.location.href = 'index.html';
-
-    const hero = document.getElementById('detailHero');
-    const ticketList = document.getElementById('ticketList');
-    
-    try {
-        const res = await fetch('/api/concerts');
-        const data = await res.json();
-        currentConcert = data.data.find(c => c.concertId === id);
-        
-        if (!currentConcert) throw new Error("Konser tidak ditemukan");
-
-        const dateObj = new Date(currentConcert.dateTime);
-        const dateStr = dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-
-        hero.innerHTML = `
-            <div class="detail-info">
-                <span class="status ${currentConcert.status}" style="margin-bottom: 1rem;">${currentConcert.status.toUpperCase()}</span>
-                <h1>${currentConcert.title}</h1>
-                <p style="font-size: 1.2rem; margin-bottom: 1rem;"><i class="fas fa-calendar-alt"></i> ${dateStr}</p>
-                <p style="font-size: 1.2rem; margin-bottom: 1rem;"><i class="fas fa-map-marker-alt"></i> ${currentConcert.venueName}</p>
-                <p style="color: var(--text-secondary); margin-bottom: 2rem;">Rasakan pengalaman konser yang luar biasa bersama line up favoritmu.</p>
-                <h3><i class="fas fa-users"></i> Lineup:</h3>
-                <p style="font-size: 1.1rem; color: var(--accent); margin-top: 0.5rem;">${currentConcert.artistLineup.join(' • ')}</p>
-            </div>
-        `;
-
-        const tRes = await fetch(`/api/tickets?concertId=${id}`);
-        const tData = await tRes.json();
-        
-        if (tData.success && tData.data.length > 0) {
-            ticketList.innerHTML = '';
-            tData.data.forEach(t => {
-                const formatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
-                const isSoldOut = t.remainingQuota <= 0;
-                ticketList.innerHTML += `
-                    <div class="ticket-card" style="background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 15px; padding: 2rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; opacity: ${isSoldOut ? '0.5' : '1'}">
-                        <div>
-                            <h3 style="color: var(--accent); font-size: 1.5rem; margin-bottom: 0.5rem;">${t.category}</h3>
-                            <p style="font-size: 1.2rem; font-weight: bold;">${formatter.format(t.price)}</p>
-                            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">Sisa Kuota: ${t.remainingQuota}</p>
-                        </div>
-                        <div style="display: flex; gap: 1rem; align-items: center;">
-                            <button class="btn btn-outline" onclick="showSeatPlan('${currentConcert.concertId}', '${t.ticketId}', '${t.category}', ${t.price}, ${t.remainingQuota})" ${isSoldOut ? 'disabled' : ''}>${isSoldOut ? 'Habis' : 'Pilih Kursi'}</button>
-                        </div>
-                    </div>
-                `;
-            });
-        } else {
-            ticketList.innerHTML = '<p>Tiket belum tersedia.</p>';
-        }
-
-    } catch (e) {
-        hero.innerHTML = `<p>Gagal memuat detail konser.</p>`;
-    }
-}
-
-function showSeatPlan(concertId, ticketId, category, price, maxQuota) {
-    if (!currentUser) return alert("Harap masuk (login) terlebih dahulu."), window.location.href = 'login.html';
-    let seats = '<div style="display:grid; grid-template-columns: repeat(10, 1fr); gap: 10px; margin-top:2rem;">';
-    for(let i=1; i<=50; i++) {
-        const isAvail = i <= maxQuota;
-        seats += `<div onclick="${isAvail ? 'toggleSeat(this)' : ''}" class="seat" style="height:35px; background: ${isAvail ? 'var(--glass-bg)' : '#555'}; border: 1px solid ${isAvail ? 'var(--accent)' : '#444'}; border-radius:5px; cursor: ${isAvail ? 'pointer' : 'not-allowed'}; display:flex; align-items:center; justify-content:center; font-size:0.8rem;">${i}</div>`;
-    }
-    document.getElementById('ticketsSection').innerHTML = `
-        <h2 class="section-title">Pilih Kursi - ${category}</h2>
-        ${seats}</div>
-        <div style="margin-top: 2rem; display: flex; justify-content: space-between; align-items: center;">
-            <p style="font-size: 1.2rem;">Kursi terpilih: <span id="selCount" style="color:var(--accent); font-weight:bold;">0</span></p>
-            <button class="btn btn-primary" onclick="proceedPlan('${concertId}', '${ticketId}', '${category}', ${price}, ${maxQuota})">Lanjut Pembayaran</button>
-        </div>`;
-}
-
-function toggleSeat(el) {
-    el.classList.toggle('selected');
-    if (el.classList.contains('selected')) {
-        el.style.background = 'var(--accent)';
-        el.style.color = 'var(--bg-main)';
-    } else {
-        el.style.background = 'var(--glass-bg)';
-        el.style.color = 'var(--text-primary)';
-    }
-    document.getElementById('selCount').innerText = document.querySelectorAll('.seat.selected').length;
-}
-
-function proceedPlan(concertId, ticketId, category, price, maxQuota) {
-    const qty = document.querySelectorAll('.seat.selected').length;
-    if (qty === 0 || qty > maxQuota) return alert("Pilih minimal 1 kursi dan maksimal sesuai kuota.");
-    sessionStorage.setItem('pendingOrder', JSON.stringify({ concertId, ticketId, category, price, quantity: qty, concertTitle: currentConcert.title }));
-    window.location.href = 'checkout.html';
-}
-
-// Checkout functions
-async function loadCheckoutSummary() {
-    if (!currentUser) return window.location.href = 'login.html';
-    
-    const orderData = JSON.parse(sessionStorage.getItem('pendingOrder'));
-    if (!orderData) return window.location.href = 'index.html';
-
-    const formatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
-    const total = orderData.price * orderData.quantity;
-
-    document.getElementById('summaryCard').innerHTML = `
-        <h3>Ringkasan Pesanan</h3>
-        <div style="margin-top: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem;">
-            <p style="font-weight: bold; font-size: 1.2rem; color: var(--accent);">${orderData.concertTitle}</p>
-            <p style="margin-top: 0.5rem;">Kategori: ${orderData.category}</p>
-            <p>Jumlah: ${orderData.quantity} tiket</p>
-        </div>
-        <div style="margin-top: 1rem; display: flex; justify-content: space-between; font-size: 1.2rem; font-weight: bold;">
-            <span>Total Tagihan</span>
-            <span style="color: var(--accent);">${formatter.format(total)}</span>
-        </div>
-    `;
-}
-
-async function processPayment() {
-    const orderData = JSON.parse(sessionStorage.getItem('pendingOrder'));
-    if (!orderData) return;
-
-    const btn = document.querySelector('.payment-card .btn-primary');
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses GoPay...';
-    btn.disabled = true;
-
-    try {
-        const res = await fetch('/api/orders', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                userId: currentUser.userId,
-                concertId: orderData.concertId,
-                ticketId: orderData.ticketId,
-                quantity: orderData.quantity
-            })
-        });
-
-        const data = await res.json();
-        
-        setTimeout(() => {
-            if (data.success) {
-                let myTickets = JSON.parse(localStorage.getItem('myTickets') || '[]');
-                
-                for (let i = 0; i < orderData.quantity; i++) {
-                    myTickets.push({
-                        ticketId: `TKT-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-                        concertTitle: orderData.concertTitle,
-                        category: orderData.category,
-                        orderId: data.data.orderId,
-                        userId: currentUser.userId,
-                        purchasedAt: new Date().toISOString()
-                    });
-                }
-                localStorage.setItem('myTickets', JSON.stringify(myTickets));
-                
-                alert("Pembayaran GoPay Berhasil!");
-                sessionStorage.removeItem('pendingOrder');
-                window.location.href = 'tickets.html';
-            } else {
-                alert(`Gagal membuat pesanan: ${data.message}`);
-                btn.innerHTML = 'Bayar Sekarang';
-                btn.disabled = false;
-            }
-        }, 2000);
-
-    } catch (e) {
-        alert("Terjadi kesalahan jaringan.");
-        btn.innerHTML = 'Bayar Sekarang';
-        btn.disabled = false;
-    }
-}
-
-// Tiket Saya functions
-function loadMyTickets() {
-    if (!currentUser) return window.location.href = 'login.html';
-
-    const container = document.getElementById('myTicketsContainer');
-    const allTickets = JSON.parse(localStorage.getItem('myTickets') || '[]');
-    const myTickets = allTickets.filter(t => t.userId === currentUser.userId);
-
-    if (myTickets.length === 0) {
-        container.innerHTML = '<p style="color: var(--text-secondary);">Anda belum memiliki tiket.</p>';
-        return;
-    }
-
-    container.innerHTML = '';
-    myTickets.reverse().forEach(t => {
-        const qrData = `VALIDATE:${t.ticketId}:${t.orderId}`;
-        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrData)}`;
-
-        container.innerHTML += `
-            <div class="qr-ticket" style="background: linear-gradient(135deg, #ffffff, #f0f0f0); color: #0b0c10; border-radius: 20px; padding: 2rem; text-align: center; width: 300px; box-shadow: 0 10px 30px rgba(102, 252, 241, 0.2);">
-                <h3 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--bg-main);">${t.concertTitle}</h3>
-                <p style="font-weight: 600; color: var(--accent-dark); margin-bottom: 1.5rem;">Kategori: ${t.category}</p>
-                <div style="background: white; padding: 10px; display: inline-block; border-radius: 10px; margin-bottom: 1.5rem; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
-                    <img src="${qrUrl}" alt="QR Code" style="width: 150px; height: 150px;">
-                </div>
-                <p style="font-family: monospace; font-size: 0.9rem; margin-bottom: 1rem; font-weight: 600; color: #555;">ID: ${t.ticketId}</p>
-                <button class="btn btn-primary" style="width: 100%; padding: 0.8rem; border-radius: 10px;" onclick="validateTicket('${t.ticketId}')">Simulasikan Validasi</button>
-            </div>
-        `;
-    });
-}
-
-function validateTicket(ticketId) {
-    alert(`Memindai tiket ${ticketId}...\n\n✅ TIKET VALID!\nSilakan masuk ke venue tanpa antrian.`);
-}

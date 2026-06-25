@@ -3,7 +3,7 @@
     "userId": "u001-admin-0000-0000-000000000000",
     "name": "Admin ConcertIn",
     "email": "admin@concertin.com",
-    "password": "3b612c75a7b5048a435fb6ec81e52ff92d6d795a8b5a9c17070f6a63c97a53b2",
+    "password": "admin",
     "role": "admin",
     "created_at": "2026-01-01T00:00:00"
   },
@@ -11,24 +11,8 @@
     "userId": "u002-cust-0000-0000-000000000000",
     "name": "Rina Amelia",
     "email": "rina@gmail.com",
-    "password": "747d6478926c5b7dd8119d59fdfeff77861ba284cf9dfa93a98f8c9cc11b8fe4",
+    "password": "rina",
     "role": "cust",
     "created_at": "2026-01-10T10:00:00"
-  },
-  {
-    "userId": "cef65494-5491-42fc-8f7c-434a0df99b6a",
-    "name": "Rina",
-    "email": "rina@example.com",
-    "password": "008c70392e3abfbd0fa47bbc2ed96aa99bd49e159727fcba0f2e6abeb3a9d601",
-    "role": "cust",
-    "created_at": "2026-06-15T20:05:02.588650"
-  },
-  {
-    "userId": "957d6095-6f5b-4238-9fab-6660aac111af",
-    "name": "Diana",
-    "email": "diana@student.com",
-    "password": "afc466a3368ecd5720833b670fa0d40e376d6c9dc6f61406e3ee496892f2f1e5",
-    "role": "cust",
-    "created_at": "2026-06-15T20:14:31.766512"
   }
 ]

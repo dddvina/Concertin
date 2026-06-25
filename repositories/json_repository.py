@@ -14,14 +14,14 @@ class JsonRepository:
     Menangani semua operasi CRUD pada file JSON di folder database.
     """
 
-    _base_path = os.path.join(
+    __base_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "database"
     )
 
     @classmethod
-    def _get_filepath(cls, filename):
+    def __get_filepath(cls, filename):
         """Mendapatkan full path untuk sebuah filename."""
-        return os.path.join(cls._base_path, filename)
+        return os.path.join(cls.__base_path, filename)
 
     @classmethod
     def load(cls, filename):
@@ -35,7 +35,7 @@ class JsonRepository:
             list: Daftar record (dict). Mengembalikan list kosong jika error.
         """
         try:
-            filepath = cls._get_filepath(filename)
+            filepath = cls.__get_filepath(filename)
             if not os.path.exists(filepath):
                 return []
             with open(filepath, "r", encoding="utf-8") as f:
@@ -55,7 +55,7 @@ class JsonRepository:
             data (list): Daftar record yang akan disimpan.
         """
         try:
-            filepath = cls._get_filepath(filename)
+            filepath = cls.__get_filepath(filename)
             os.makedirs(os.path.dirname(filepath), exist_ok=True)
             with open(filepath, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False, default=str)
@@ -70,37 +70,54 @@ class JsonRepository:
         Returns:
             dict | None: Record yang cocok, atau None jika tidak ditemukan.
         """
-        data = cls.load(filename)
-        return next(
-            (record for record in data if record.get(id_field) == id_value),
-            None
-        )
+        try:
+            data = cls.load(filename)
+            for record in data:
+                if record.get(id_field) == id_value:
+                    return record
+            return None
+        except Exception as e:
+            print(f"[ERROR] Gagal mencari data di {filename}: {e}")
+            return None
 
     @classmethod
     def find_all(cls, filename):
         """Mengambil semua record dari file JSON."""
-        return cls.load(filename)
+        try:
+            return cls.load(filename)
+        except Exception as e:
+            print(f"[ERROR] Gagal mengambil data dari {filename}: {e}")
+            return []
 
     @classmethod
     def insert(cls, filename, record):
         """Menyisipkan record baru ke file JSON."""
-        data = cls.load(filename)
-        data.append(record)
-        cls.save(filename, data)
+        try:
+            data = cls.load(filename)
+            data.append(record)
+            cls.save(filename, data)
+        except Exception as e:
+            print(f"[ERROR] Gagal menyisipkan data ke {filename}: {e}")
 
     @classmethod
     def update(cls, filename, id_field, id_value, updated_record):
         """Memperbarui record yang ada di file JSON berdasarkan ID."""
-        data = cls.load(filename)
-        for i, record in enumerate(data):
-            if record.get(id_field) == id_value:
-                data[i] = updated_record
-                break
-        cls.save(filename, data)
+        try:
+            data = cls.load(filename)
+            for i, record in enumerate(data):
+                if record.get(id_field) == id_value:
+                    data[i] = updated_record
+                    break
+            cls.save(filename, data)
+        except Exception as e:
+            print(f"[ERROR] Gagal memperbarui data di {filename}: {e}")
 
     @classmethod
     def delete(cls, filename, id_field, id_value):
         """Menghapus record dari file JSON berdasarkan ID."""
-        data = cls.load(filename)
-        data = [r for r in data if r.get(id_field) != id_value]
-        cls.save(filename, data)
+        try:
+            data = cls.load(filename)
+            data = [r for r in data if r.get(id_field) != id_value]
+            cls.save(filename, data)
+        except Exception as e:
+            print(f"[ERROR] Gagal menghapus data dari {filename}: {e}")

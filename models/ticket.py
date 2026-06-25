@@ -13,7 +13,17 @@ DB_FILE = "tickets.json"
 
 
 class Ticket(BaseModel):
-    """Model Ticket merepresentasikan tipe tiket untuk sebuah konser."""
+    """
+    Model Ticket merepresentasikan tipe tiket untuk sebuah konser.
+
+    Attributes:
+        __ticketId (str): Unique ticket identifier.
+        __concertId (str): ID konser terkait (FK).
+        __category (str): Kategori tiket ('VIP' atau 'REG').
+        __price (float): Harga tiket.
+        __totalQuota (int): Total kuota awal tiket.
+        __remainingQuota (int): Sisa kuota tiket saat ini.
+    """
 
     def __init__(self, ticketId=None, concertId="", category="REG",
                  price=0.0, totalQuota=0, remainingQuota=None, created_at=None):
@@ -23,9 +33,9 @@ class Ticket(BaseModel):
         self.__category = category
         self.__price = float(price)
         self.__totalQuota = int(totalQuota)
-        self.__remainingQuota = (
-            int(remainingQuota) if remainingQuota is not None else int(totalQuota)
-        )
+        self.__remainingQuota = int(remainingQuota) if remainingQuota is not None else int(totalQuota)
+
+    # ── Properties ──────────────────────────────────────────
 
     @property
     def ticketId(self):
@@ -75,13 +85,17 @@ class Ticket(BaseModel):
     def remainingQuota(self, value):
         self.__remainingQuota = int(value)
 
+    # ── Instance Methods ────────────────────────────────────
+
     def validate(self):
+        """Validasi atribut tiket."""
         Validator.validate_not_empty(self.__concertId, "concertId")
         Validator.validate_enum(self.__category, ["VIP", "REG"], "category")
         Validator.validate_positive_number(self.__price, "price")
         Validator.validate_positive_number(self.__totalQuota, "totalQuota")
 
     def to_dict(self):
+        """Konversi Ticket ke dictionary."""
         return {
             "ticketId": self.__ticketId,
             "concertId": self.__concertId,
@@ -94,6 +108,7 @@ class Ticket(BaseModel):
 
     @staticmethod
     def from_dict(data):
+        """Buat instance Ticket dari dictionary."""
         return Ticket(
             ticketId=data.get("ticketId"),
             concertId=data.get("concertId", ""),
@@ -105,41 +120,52 @@ class Ticket(BaseModel):
         )
 
     def __str__(self):
-        return (
-            f"Ticket(id={self.__ticketId}, concert={self.__concertId}, "
-            f"category={self.__category}, price=Rp{self.__price:,.0f}, "
-            f"remaining={self.__remainingQuota}/{self.__totalQuota})"
-        )
+        return (f"Ticket(id={self.__ticketId}, concert={self.__concertId}, "
+                f"category={self.__category}, price=Rp{self.__price:,.0f}, "
+                f"remaining={self.__remainingQuota}/{self.__totalQuota})")
 
     def checkAvailability(self):
+        """Cek apakah tiket masih tersedia."""
         return self.__remainingQuota > 0
 
     def reserveTicket(self, qty):
+        """
+        Pesan tiket dengan mengurangi remaining quota.
+
+        Args:
+            qty (int): Jumlah tiket yang dipesan.
+
+        Returns:
+            bool: True jika pemesanan berhasil.
+        """
         if not self.checkAvailability():
             raise TicketNotAvailableException()
         if qty > self.__remainingQuota:
             raise InsufficientQuotaException(
-                f"Kuota tersisa hanya {self.__remainingQuota}, "
-                f"tidak dapat memesan {qty} tiket."
+                f"Kuota tersisa hanya {self.__remainingQuota}, tidak dapat memesan {qty} tiket."
             )
         self.__remainingQuota -= qty
         JsonRepository.update(DB_FILE, "ticketId", self.__ticketId, self.to_dict())
         return True
 
     def getByConcert(self, concert_id):
+        """Ambil semua tiket untuk konser tertentu."""
         all_data = JsonRepository.find_all(DB_FILE)
-        return [
-            Ticket.from_dict(d) for d in all_data
-            if d.get("concertId") == concert_id
-        ]
+        return [Ticket.from_dict(d) for d in all_data if d.get("concertId") == concert_id]
+
+    # ── Static Methods ──────────────────────────────────────
 
     @staticmethod
     def count_available():
+        """Hitung jumlah tiket yang masih tersedia kuotanya."""
         all_data = JsonRepository.find_all(DB_FILE)
         return sum(1 for d in all_data if d.get("remainingQuota", 0) > 0)
 
+    # ── Class Methods ───────────────────────────────────────
+
     @classmethod
     def create(cls, data_dict):
+        """Factory method: buat dan simpan Ticket baru."""
         ticket = cls(
             concertId=data_dict.get("concertId", ""),
             category=data_dict.get("category", "REG"),

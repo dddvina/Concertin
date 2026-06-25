@@ -5,7 +5,6 @@ Mewarisi BaseModel dan mengimplementasikan semua abstract method.
 """
 
 from datetime import datetime
-
 from models.base_model import BaseModel
 from repositories.json_repository import JsonRepository
 from utils.validator import Validator
@@ -34,10 +33,15 @@ class Concert(BaseModel):
         super().__init__(id=concertId, created_at=created_at)
         self.__concertId = self.id
         self.__title = title
-        self.__artistLineup = artistLineup or []
+        self.__artistLineup = artistLineup if artistLineup else []
         self.__venueName = venueName
         self.__venueAddress = venueAddress
-        self.__dateTime = self._parse_datetime(dateTime) or datetime.now()
+        if dateTime is None:
+            self.__dateTime = datetime.now()
+        elif isinstance(dateTime, str):
+            self.__dateTime = datetime.fromisoformat(dateTime)
+        else:
+            self.__dateTime = dateTime
         self.__genre = genre
         self.__status = status
 
@@ -89,7 +93,10 @@ class Concert(BaseModel):
 
     @dateTime.setter
     def dateTime(self, value):
-        self.__dateTime = self._parse_datetime(value) or self.__dateTime
+        if isinstance(value, str):
+            self.__dateTime = datetime.fromisoformat(value)
+        else:
+            self.__dateTime = value
 
     @property
     def genre(self):
@@ -115,11 +122,8 @@ class Concert(BaseModel):
         Validator.validate_not_empty(self.__venueName, "venueName")
         Validator.validate_not_empty(self.__venueAddress, "venueAddress")
         Validator.validate_not_empty(self.__genre, "genre")
-        Validator.validate_enum(
-            self.__status,
-            ["upcoming", "ongoing", "completed", "cancelled"],
-            "status"
-        )
+        Validator.validate_enum(self.__status,
+                                ["upcoming", "ongoing", "completed", "cancelled"], "status")
 
     def to_dict(self):
         """Konversi Concert ke dictionary."""
@@ -152,12 +156,10 @@ class Concert(BaseModel):
 
     def __str__(self):
         artists = ", ".join(self.__artistLineup)
-        return (
-            f"Concert(id={self.__concertId}, title={self.__title}, "
-            f"artists=[{artists}], venue={self.__venueName}, "
-            f"date={self.__dateTime.strftime('%Y-%m-%d %H:%M')}, "
-            f"genre={self.__genre}, status={self.__status})"
-        )
+        return (f"Concert(id={self.__concertId}, title={self.__title}, "
+                f"artists=[{artists}], venue={self.__venueName}, "
+                f"date={self.__dateTime.strftime('%Y-%m-%d %H:%M')}, "
+                f"genre={self.__genre}, status={self.__status})")
 
     def getAll(self):
         """Ambil semua konser dari database."""
@@ -167,18 +169,22 @@ class Concert(BaseModel):
     def search(self, keyword):
         """Cari konser berdasarkan keyword (judul, genre, venue, artis)."""
         keyword_lower = keyword.lower()
-        return [
-            c for c in self.getAll()
-            if (keyword_lower in c.title.lower()
-                or keyword_lower in c.genre.lower()
-                or keyword_lower in c.venueName.lower()
-                or any(keyword_lower in a.lower() for a in c.artistLineup))
-        ]
+        all_concerts = self.getAll()
+        results = []
+        for c in all_concerts:
+            if (keyword_lower in c.title.lower() or
+                    keyword_lower in c.genre.lower() or
+                    keyword_lower in c.venueName.lower() or
+                    any(keyword_lower in a.lower() for a in c.artistLineup)):
+                results.append(c)
+        return results
 
     def getById(self, concert_id):
         """Ambil konser berdasarkan ID."""
         data = JsonRepository.find_by_id(DB_FILE, "concertId", concert_id)
-        return Concert.from_dict(data) if data else None
+        if data:
+            return Concert.from_dict(data)
+        return None
 
     # ── Static Methods ──────────────────────────────────────
 

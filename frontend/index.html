@@ -3,56 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Sistem Pemesanan Tiket Konser Terbaik. Temukan dan pesan tiket konser artis favoritmu dengan mudah dan cepat.">
-    <title>ConcertIn | Book Your Next Live Experience</title>
+    <meta name="description" content="ConcertIn membantu kamu menemukan dan memesan tiket konser dengan cepat, aman, dan nyaman.">
+    <title>ConcertIn | Tiket Konser Favoritmu</title>
     <link rel="stylesheet" href="styles.css">
-    <!-- FontAwesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body>
-
-    <!-- Navbar -->
-    <nav id="navbar">
-        <a href="#" class="logo">
-            <i class="fas fa-music"></i> Concert<span>In</span>
+<body data-page="home">
+    <nav class="site-nav" id="navbar">
+        <a href="index.html" class="logo" aria-label="ConcertIn">
+            <span class="logo-mark"><i class="fas fa-music"></i></span>
+            Concert<span>In</span>
         </a>
-        <ul class="nav-links">
-            <li><a href="#" class="active">Beranda</a></li>
-            <li><a href="#concerts">Konser</a></li>
-            <li><a href="tentang.html">Tentang</a></li>
-            <li><a href="kontak.html">Kontak</a></li>
-        </ul>
-        <div class="nav-actions" id="navActions">
-            <a href="login.html" class="btn btn-outline" style="margin-right: 10px;">Masuk</a>
-            <a href="register.html" class="btn btn-primary">Daftar</a>
+
+        <button class="nav-toggle" id="navToggle" aria-label="Buka menu" aria-expanded="false">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        <div class="nav-menu" id="navMenu">
+            <ul class="nav-links">
+                <li><a href="index.html" class="active">Beranda</a></li>
+                <li><a href="#concerts">Konser</a></li>
+                <li><a href="#benefits">Benefit</a></li>
+                <li><a href="contact.html">Kontak</a></li>
+            </ul>
+            <div class="nav-actions">
+                <!-- Dynamically rendered by NavbarRenderer -->
+                <button class="btn btn-ghost" onclick="window.location.href='login.html'">
+                    <i class="fas fa-right-to-bracket"></i> Masuk
+                </button>
+                <button class="btn btn-primary" onclick="window.location.href='register.html'">
+                    <i class="fas fa-user-plus"></i> Daftar
+                </button>
+            </div>
         </div>
     </nav>
 
-    <!-- Hero Section -->
     <header class="hero">
-        <img src="assets/hero.png" alt="Live Concert Audience with Neon Lights" class="hero-bg">
-        <div class="hero-overlay"></div>
+        <img src="assets/bp.jpg" alt="Penonton konser dengan pencahayaan panggung" class="hero-bg">
         <div class="hero-content">
-            <h1>Rasakan Euphoria<br>Live Music</h1>
-            <p>Platform pemesanan tiket konser terpercaya. Dapatkan tiket VIP dan Regular untuk artis lokal hingga internasional, semuanya dalam satu genggaman.</p>
-            <div class="hero-btns">
-                <a href="#concerts" class="btn btn-primary"><i class="fas fa-ticket-alt"></i> Jelajahi Konser</a>
-                <a href="#" class="btn btn-outline"><i class="fas fa-search"></i> Cari Artis</a>
+            <p class="eyebrow"><i class="fas fa-bolt"></i> Booking cepat untuk event pilihan</p>
+            <h1>ConcertIn</h1>
+            <p class="hero-copy">Temukan konser favorit, bandingkan tiket, lalu pesan tanpa ribet dari satu tempat.</p>
+
+            <form class="search-panel" id="searchForm">
+                <label class="sr-only" for="searchInput">Cari artis atau konser</label>
+                <div class="field field-wide">
+                    <i class="fas fa-magnifying-glass"></i>
+                    <input id="searchInput" type="search" placeholder="Cari artis, konser, atau venue">
+                </div>
+
+                <label class="sr-only" for="genreFilter">Genre</label>
+                <div class="field">
+                    <i class="fas fa-sliders"></i>
+                    <select id="genreFilter">
+                        <option value="all">Semua genre</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-primary" type="submit">
+                    <i class="fas fa-ticket"></i>
+                    Cari Tiket
+                </button>
+            </form>
+
+            <div class="hero-stats" aria-label="Ringkasan ConcertIn">
+                <span><strong>15K+</strong> tiket terjual</span>
+                <span><strong>42</strong> event aktif</span>
+                <span><strong>24/7</strong> bantuan</span>
             </div>
         </div>
     </header>
 
-    <!-- Main Content -->
     <main>
-        <!-- Concerts Section -->
-        <section id="concerts" class="concerts">
-            <h2 class="section-title">Konser Mendatang</h2>
-            <div class="concert-grid" id="concertGrid">
-                <!-- Concert cards will be injected here by script.js -->
+        <section id="concerts" class="section concerts">
+            <div class="section-header">
+                <div>
+                    <p class="section-kicker">Konser Mendatang</p>
+                    <h2>Pilih panggung berikutnya</h2>
+                </div>
+                <div class="filter-tabs" id="filterTabs" aria-label="Filter genre konser"></div>
+            </div>
+
+            <div class="concert-grid" id="concertGrid"></div>
+            <p class="empty-state" id="emptyState">Konser tidak ditemukan. Coba kata kunci atau genre lain.</p>
+        </section>
+
+        <section id="benefits" class="section benefits">
+            <div class="section-header">
+                <div>
+                    <p class="section-kicker">Kenapa ConcertIn</p>
+                    <h2>Lebih mudah dari cari tiket manual</h2>
+                </div>
+            </div>
+
+            <div class="benefit-grid">
+                <article>
+                    <i class="fas fa-shield-halved"></i>
+                    <h3>Pemesanan aman</h3>
+                    <p>Data tiket tersimpan rapi dan status pesanan mudah dicek kembali.</p>
+                </article>
+                <article>
+                    <i class="fas fa-clock"></i>
+                    <h3>Proses cepat</h3>
+                    <p>Pilih konser, cek harga, dan lanjutkan pembelian dalam beberapa langkah.</p>
+                </article>
+                <article>
+                    <i class="fas fa-location-dot"></i>
+                    <h3>Info jelas</h3>
+                    <p>Venue, jadwal, genre, dan sisa tiket ditampilkan langsung di kartu konser.</p>
+                </article>
             </div>
         </section>
     </main>
 
+    <footer id="contact">
+        <span>ConcertIn</span>
+        <p>Platform pemesanan tiket konser untuk pengalaman live music yang lebih praktis. <a href="contact.html">Hubungi Kami</a></p>
+    </footer>
+
     <script src="script.js"></script>
 </body>
 </html>
+
+#ahhaha

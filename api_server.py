@@ -1,6 +1,7 @@
 """
-API Server untuk menghubungkan Frontend (HTML/JS) ke Backend (Python).
-Menyediakan static file server dan JSON API endpoints.
+API Server untuk aplikasi ConcertIn.
+Menyediakan RESTful endpoint yang menghubungkan frontend dengan backend OOP.
+Menggunakan built-in http.server agar tidak perlu dependency eksternal.
 """
 
 import sys
@@ -9,178 +10,341 @@ import json
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-# Fix Windows console encoding
-sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-sys.stderr.reconfigure(encoding='utf-8', errors='replace')
-
-# Tambahkan direktori root ke sys.path agar bisa import models & services
+# Pastikan root project ada di sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from services.user_service import UserService
 from services.concert_service import ConcertService
 from services.ticket_service import TicketService
 from services.order_service import OrderService
+from services.payment_service import PaymentService
 from utils.exceptions import ConcertInException
 
-FRONTEND_DIR = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), 'frontend'
-)
 
+class APIRequestHandler(SimpleHTTPRequestHandler):
+    """
+    Handler HTTP yang melayani file statis dari folder frontend
+    sekaligus menyediakan endpoint API JSON di path /api/*.
+    """
 
-class APIHandler(SimpleHTTPRequestHandler):
-    """Handler HTTP untuk API endpoints dan static file serving."""
+    # Map folder frontend sebagai root untuk file statis
+    FRONTEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend")
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, directory=FRONTEND_DIR, **kwargs)
+        super().__init__(*args, directory=self.FRONTEND_DIR, **kwargs)
 
-    def _send_json(self, status_code, data):
-        """Helper untuk mengirim response JSON."""
-        self.send_response(status_code)
-        self.send_header('Content-type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
+    # ── Helper Response ──────────────────────────────────────
+
+    def _send_json(self, data, status=200):
+        """Kirim response JSON dengan status code yang sesuai."""
+        response_body = json.dumps(data, ensure_ascii=False, default=str).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(response_body)))
+        self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
-        self.wfile.write(json.dumps(data).encode('utf-8'))
+        self.wfile.write(response_body)
 
     def _read_body(self):
-        """Helper: baca dan parse request body JSON."""
-        content_length = int(self.headers.get('Content-Length', 0))
-        if content_length <= 0:
-            return {}
-        try:
-            body = self.rfile.read(content_length)
-            return json.loads(body.decode('utf-8'))
-        except (json.JSONDecodeError, UnicodeDecodeError):
-            return {}
+        """Baca dan parse body JSON dari request."""
+        content_length = int(self.headers.get("Content-Length", 0))
+        raw = self.rfile.read(content_length)
+        return json.loads(raw) if raw else {}
 
-    # ── GET Endpoints ──────────────────────────────────────
+    # ── CORS Preflight ───────────────────────────────────────
+
+    def do_OPTIONS(self):
+        """Handle preflight CORS requests."""
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
+
+    # ── GET Requests ─────────────────────────────────────────
 
     def do_GET(self):
-        """Handle GET requests."""
+        """Route GET requests ke API handler atau file statis."""
         parsed = urlparse(self.path)
         path = parsed.path
+        params = parse_qs(parsed.query)
 
-        if path == '/api/concerts':
-            self._handle_get_concerts()
-        elif path == '/api/tickets':
-            query = parse_qs(parsed.query)
-            concert_id = query.get('concertId', [None])[0]
-            self._handle_get_tickets(concert_id)
-        else:
-            # Fallback melayani file statis (HTML/CSS/JS)
-            super().do_GET()
-
-    def _handle_get_concerts(self):
         try:
-            concerts = ConcertService.get_all_concerts()
-            data = [c.to_dict() for c in concerts]
-            self._send_json(200, {"success": True, "data": data})
+            if path == "/api/concerts":
+                self._handle_get_concerts(params)
+            elif path == "/api/concerts/search":
+                self._handle_search_concerts(params)
+            elif path.startswith("/api/concerts/"):
+                concert_id = path.split("/api/concerts/")[1]
+                self._handle_get_concert_detail(concert_id)
+            elif path.startswith("/api/tickets/concert/"):
+                concert_id = path.split("/api/tickets/concert/")[1]
+                self._handle_get_tickets_by_concert(concert_id)
+            elif path.startswith("/api/orders/user/"):
+                user_id = path.split("/api/orders/user/")[1]
+                self._handle_get_orders_by_user(user_id)
+            elif path == "/api/orders":
+                self._handle_get_all_orders()
+            elif path == "/api/statistics":
+                self._handle_get_statistics()
+            else:
+                # Serve file statis dari folder frontend
+                super().do_GET()
+        except ConcertInException as e:
+            self._send_json({"success": False, "error": str(e)}, 400)
         except Exception as e:
-            self._send_json(500, {"success": False, "message": str(e)})
+            self._send_json({"success": False, "error": str(e)}, 500)
 
-    def _handle_get_tickets(self, concert_id):
-        if not concert_id:
-            self._send_json(
-                400, {"success": False, "message": "concertId required"}
-            )
-            return
-        try:
-            tickets = TicketService.get_tickets_by_concert(concert_id)
-            data = [t.to_dict() for t in tickets]
-            self._send_json(200, {"success": True, "data": data})
-        except Exception as e:
-            self._send_json(500, {"success": False, "message": str(e)})
-
-    # ── POST Endpoints ─────────────────────────────────────
+    # ── POST Requests ────────────────────────────────────────
 
     def do_POST(self):
-        """Handle POST requests."""
+        """Route POST requests ke API handler yang sesuai."""
         path = urlparse(self.path).path
-        req_data = self._read_body()
 
-        handlers = {
-            '/api/login': self._handle_login,
-            '/api/register': self._handle_register,
-            '/api/admin/register': self._handle_admin_register,
-            '/api/orders': self._handle_create_order,
-        }
-
-        handler = handlers.get(path)
-        if handler:
-            handler(req_data)
-        else:
-            self._send_json(
-                404, {"success": False, "message": "Endpoint not found"}
-            )
-
-    def _handle_login(self, req_data):
         try:
-            user = UserService.login(
-                req_data.get("email"), req_data.get("password")
-            )
-            self._send_json(200, {"success": True, "data": user.to_dict()})
+            body = self._read_body()
+
+            if path == "/api/auth/login":
+                self._handle_login(body)
+            elif path == "/api/auth/register":
+                self._handle_register(body)
+            elif path == "/api/orders":
+                self._handle_create_order(body)
+            elif path == "/api/payments":
+                self._handle_process_payment(body)
+            elif path == "/api/orders/cancel":
+                self._handle_cancel_order(body)
+            elif path == "/api/concerts":
+                self._handle_create_concert(body)
+            elif path == "/api/tickets":
+                self._handle_create_ticket(body)
+            elif path == "/api/tickets/validate":
+                self._handle_validate_ticket(body)
+            else:
+                self._send_json({"success": False, "error": "Endpoint tidak ditemukan."}, 404)
         except ConcertInException as e:
-            self._send_json(401, {"success": False, "message": str(e)})
+            self._send_json({"success": False, "error": str(e)}, 400)
         except Exception as e:
-            self._send_json(500, {"success": False, "message": str(e)})
+            self._send_json({"success": False, "error": str(e)}, 500)
 
-    def _handle_register(self, req_data):
-        try:
-            user = UserService.register(
-                req_data.get("name"),
-                req_data.get("email"),
-                req_data.get("password"),
-                "cust"  # Memaksa role customer sesuai ketentuan keamanan
-            )
-            self._send_json(200, {"success": True, "data": user.to_dict()})
-        except ConcertInException as e:
-            self._send_json(400, {"success": False, "message": str(e)})
-        except Exception as e:
-            self._send_json(500, {"success": False, "message": str(e)})
+    # ── Auth Handlers ────────────────────────────────────────
 
-    def _handle_admin_register(self, req_data):
-        try:
-            user = UserService.register(
-                req_data.get("name"),
-                req_data.get("email"),
-                req_data.get("password"),
-                req_data.get("role", "admin")
-            )
-            self._send_json(200, {"success": True, "data": user.to_dict()})
-        except ConcertInException as e:
-            self._send_json(400, {"success": False, "message": str(e)})
-        except Exception as e:
-            self._send_json(500, {"success": False, "message": str(e)})
+    def _handle_login(self, body):
+        """Proses login user, kembalikan data user jika berhasil."""
+        email = body.get("email", "")
+        password = body.get("password", "")
+        user = UserService.login(email, password)
+        self._send_json({
+            "success": True,
+            "user": user.to_dict()
+        })
 
-    def _handle_create_order(self, req_data):
-        try:
-            order = OrderService.create_order(
-                req_data.get("userId"),
-                req_data.get("concertId"),
-                req_data.get("ticketId"),
-                int(req_data.get("quantity", 0))
-            )
-            self._send_json(200, {"success": True, "data": order.to_dict()})
-        except ConcertInException as e:
-            self._send_json(400, {"success": False, "message": str(e)})
-        except Exception as e:
-            self._send_json(500, {"success": False, "message": str(e)})
+    def _handle_register(self, body):
+        """Proses registrasi user baru."""
+        user = UserService.register(
+            name=body.get("name", ""),
+            email=body.get("email", ""),
+            password=body.get("password", ""),
+            role="cust"
+        )
+        self._send_json({
+            "success": True,
+            "message": "Registrasi berhasil! Silakan login.",
+            "user": user.to_dict()
+        })
+
+    # ── Concert Handlers ─────────────────────────────────────
+
+    def _handle_get_concerts(self, params):
+        """Ambil semua konser, dikembalikan sebagai JSON array."""
+        concerts = ConcertService.get_all_concerts()
+        result = []
+        for c in concerts:
+            c_dict = c.to_dict()
+            tickets = TicketService.get_tickets_by_concert(c.concertId)
+            c_dict["tickets"] = [t.to_dict() for t in tickets]
+            min_price = min((t.price for t in tickets), default=0)
+            total_slots = sum(t.remainingQuota for t in tickets)
+            c_dict["minPrice"] = min_price
+            c_dict["totalSlots"] = total_slots
+            result.append(c_dict)
+        self._send_json({"success": True, "concerts": result})
+
+    def _handle_search_concerts(self, params):
+        """Cari konser berdasarkan keyword."""
+        keyword = params.get("q", [""])[0]
+        concerts = ConcertService.search_concerts(keyword)
+        result = []
+        for c in concerts:
+            c_dict = c.to_dict()
+            tickets = TicketService.get_tickets_by_concert(c.concertId)
+            c_dict["tickets"] = [t.to_dict() for t in tickets]
+            min_price = min((t.price for t in tickets), default=0)
+            total_slots = sum(t.remainingQuota for t in tickets)
+            c_dict["minPrice"] = min_price
+            c_dict["totalSlots"] = total_slots
+            result.append(c_dict)
+        self._send_json({"success": True, "concerts": result})
+
+    def _handle_get_concert_detail(self, concert_id):
+        """Ambil detail konser beserta tiket-tiketnya."""
+        concert = ConcertService.get_concert_by_id(concert_id)
+        c_dict = concert.to_dict()
+        tickets = TicketService.get_tickets_by_concert(concert_id)
+        c_dict["tickets"] = [t.to_dict() for t in tickets]
+        self._send_json({"success": True, "concert": c_dict})
+
+    def _handle_get_tickets_by_concert(self, concert_id):
+        """Ambil semua tiket untuk konser tertentu."""
+        tickets = TicketService.get_tickets_by_concert(concert_id)
+        self._send_json({
+            "success": True,
+            "tickets": [t.to_dict() for t in tickets]
+        })
+
+    # ── Order Handlers ───────────────────────────────────────
+
+    def _handle_create_order(self, body):
+        """Buat order baru (harus sudah login)."""
+        order = OrderService.create_order(
+            user_id=body.get("userId"),
+            concert_id=body.get("concertId"),
+            ticket_id=body.get("ticketId"),
+            quantity=int(body.get("quantity", 1))
+        )
+        self._send_json({
+            "success": True,
+            "message": "Pesanan berhasil dibuat!",
+            "order": order.to_dict()
+        })
+
+    def _handle_cancel_order(self, body):
+        """Batalkan order pending."""
+        order = OrderService.cancel_order(body.get("orderId"))
+        self._send_json({
+            "success": True,
+            "message": "Pesanan berhasil dibatalkan."
+        })
+
+    def _handle_get_orders_by_user(self, user_id):
+        """Ambil semua order milik user tertentu."""
+        orders = OrderService.get_orders_by_user(user_id)
+        result = []
+        for o in orders:
+            o_dict = o.to_dict()
+            try:
+                concert = ConcertService.get_concert_by_id(o.concertId)
+                o_dict["concertTitle"] = concert.title
+                o_dict["concertDate"] = concert.dateTime.isoformat()
+            except Exception:
+                o_dict["concertTitle"] = "Konser Tidak Diketahui"
+                o_dict["concertDate"] = ""
+            result.append(o_dict)
+        self._send_json({"success": True, "orders": result})
+
+    def _handle_get_all_orders(self):
+        """Ambil semua order (admin only)."""
+        orders = OrderService.get_all_orders()
+        self._send_json({
+            "success": True,
+            "orders": [o.to_dict() for o in orders]
+        })
+
+    # ── Payment Handler ──────────────────────────────────────
+
+    def _handle_process_payment(self, body):
+        """Proses pembayaran untuk order tertentu."""
+        payment = PaymentService.process_payment(
+            order_id=body.get("orderId"),
+            method=body.get("method", "transfer")
+        )
+        self._send_json({
+            "success": True,
+            "message": "Pembayaran berhasil!",
+            "payment": payment.to_dict()
+        })
+
+    # ── Admin Handlers ───────────────────────────────────────
+
+    def _handle_create_concert(self, body):
+        """Tambah konser baru (admin only)."""
+        concert = ConcertService.create_concert(body)
+        self._send_json({
+            "success": True,
+            "message": "Konser berhasil ditambahkan!",
+            "concert": concert.to_dict()
+        })
+
+    def _handle_create_ticket(self, body):
+        """Tambah tiket untuk konser (admin only)."""
+        ticket = TicketService.create_ticket(body)
+        self._send_json({
+            "success": True,
+            "message": "Tiket berhasil ditambahkan!",
+            "ticket": ticket.to_dict()
+        })
+
+    def _handle_validate_ticket(self, body):
+        """Validasi tiket di venue (admin only)."""
+        from repositories.json_repository import JsonRepository
+        kode = body.get("ticketCode", "")
+        items_data = JsonRepository.find_all("order_items.json")
+
+        for i, item in enumerate(items_data):
+            if item.get("itemId") == kode:
+                if item.get("status") == "used":
+                    self._send_json({
+                        "success": False,
+                        "error": "Tiket sudah digunakan (INVALID)."
+                    }, 400)
+                    return
+                item["status"] = "used"
+                items_data[i] = item
+                JsonRepository.save("order_items.json", items_data)
+                self._send_json({
+                    "success": True,
+                    "message": "Tiket VALID dan berhasil divalidasi."
+                })
+                return
+
+        self._send_json({
+            "success": False,
+            "error": "Kode tiket tidak ditemukan."
+        }, 404)
+
+    # ── Statistics Handler ───────────────────────────────────
+
+    def _handle_get_statistics(self):
+        """Ambil statistik sistem."""
+        u_stats = UserService.get_statistics()
+        o_stats = OrderService.get_statistics()
+        t_stats = TicketService.get_statistics()
+        self._send_json({
+            "success": True,
+            "statistics": {**u_stats, **o_stats, **t_stats}
+        })
+
+    # ── Suppress log noise ───────────────────────────────────
+
+    def log_message(self, format, *args):
+        """Override log untuk menampilkan request dengan format lebih bersih."""
+        sys.stdout.write(f"[API] {args[0]}\n")
 
 
-def run(port=8000):
-    """Start the ConcertIn API server."""
-    server = HTTPServer(('', port), APIHandler)
-    print(f"========================================")
-    print(f"🚀 ConcertIn API Server & Frontend aktif")
-    print(f"👉 Buka browser di: http://localhost:{port}")
-    print(f"========================================")
-    print("Tekan Ctrl+C untuk menghentikan server.")
+def run_server(host="127.0.0.1", port=8080):
+    """Jalankan server HTTP ConcertIn."""
+    server = HTTPServer((host, port), APIRequestHandler)
+    print(f"\n{'='*50}")
+    print(f"  [ConcertIn] API Server")
+    print(f"  - http://{host}:{port}")
+    print(f"  - Serving frontend from: {APIRequestHandler.FRONTEND_DIR}")
+    print(f"{'='*50}\n")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        pass
-    server.server_close()
-    print("\nServer dihentikan.")
+        print("\n[INFO] Server dihentikan.")
+        server.server_close()
 
 
-if __name__ == '__main__':
-    run()
+if __name__ == "__main__":
+    run_server()

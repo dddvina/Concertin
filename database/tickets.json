@@ -5,7 +5,7 @@
     "category": "VIP",
     "price": 750000.0,
     "totalQuota": 100,
-    "remainingQuota": 99,
+    "remainingQuota": 100,
     "created_at": "2026-02-05T08:00:00"
   },
   {
@@ -23,7 +23,7 @@
     "category": "VIP",
     "price": 500000.0,
     "totalQuota": 200,
-    "remainingQuota": 196,
+    "remainingQuota": 200,
     "created_at": "2026-02-15T09:00:00"
   },
   {
@@ -41,7 +41,7 @@
     "category": "VIP",
     "price": 1500000.0,
     "totalQuota": 50,
-    "remainingQuota": 49,
+    "remainingQuota": 50,
     "created_at": "2026-03-05T10:00:00"
   },
   {
@@ -50,7 +50,7 @@
     "category": "REG",
     "price": 650000.0,
     "totalQuota": 300,
-    "remainingQuota": 297,
+    "remainingQuota": 300,
     "created_at": "2026-03-05T10:00:00"
   }
 ]

@@ -5,7 +5,6 @@ Mewarisi BaseModel dan mengimplementasikan semua abstract method.
 """
 
 from datetime import datetime
-
 from models.base_model import BaseModel
 from repositories.json_repository import JsonRepository
 from utils.validator import Validator
@@ -15,18 +14,34 @@ DB_FILE = "payments.json"
 
 
 class Payment(BaseModel):
-    """Model Payment merepresentasikan transaksi pembayaran."""
+    """
+    Model Payment merepresentasikan transaksi pembayaran.
+
+    Attributes:
+        __paymentId (str): Unique payment identifier.
+        __orderId (str): ID order terkait (FK).
+        __Method (str): Metode pembayaran (transfer, ewallet, qris).
+        __amount (float): Jumlah pembayaran.
+        __status (str): Status pembayaran (pending, success, failed).
+        __paymentTime (datetime): Waktu pembayaran.
+    """
 
     def __init__(self, paymentId=None, orderId="", Method="transfer",
-                 amount=0.0, status="pending", paymentTime=None,
-                 created_at=None):
+                 amount=0.0, status="pending", paymentTime=None, created_at=None):
         super().__init__(id=paymentId, created_at=created_at)
         self.__paymentId = self.id
         self.__orderId = orderId
         self.__Method = Method
         self.__amount = float(amount)
         self.__status = status
-        self.__paymentTime = self._parse_datetime(paymentTime) or datetime.now()
+        if paymentTime is None:
+            self.__paymentTime = datetime.now()
+        elif isinstance(paymentTime, str):
+            self.__paymentTime = datetime.fromisoformat(paymentTime)
+        else:
+            self.__paymentTime = paymentTime
+
+    # ── Properties ──────────────────────────────────────────
 
     @property
     def paymentId(self):
@@ -74,17 +89,18 @@ class Payment(BaseModel):
 
     @paymentTime.setter
     def paymentTime(self, value):
-        self.__paymentTime = self._parse_datetime(value) or self.__paymentTime
+        if isinstance(value, str):
+            self.__paymentTime = datetime.fromisoformat(value)
+        else:
+            self.__paymentTime = value
+
+    # ── Instance Methods ────────────────────────────────────
 
     def validate(self):
         Validator.validate_not_empty(self.__orderId, "orderId")
-        Validator.validate_enum(
-            self.__Method, ["transfer", "ewallet", "qris"], "Method"
-        )
+        Validator.validate_enum(self.__Method, ["transfer", "ewallet", "qris"], "Method")
         Validator.validate_positive_number(self.__amount, "amount")
-        Validator.validate_enum(
-            self.__status, ["pending", "success", "failed"], "status"
-        )
+        Validator.validate_enum(self.__status, ["pending", "success", "failed"], "status")
 
     def to_dict(self):
         return {
@@ -110,11 +126,9 @@ class Payment(BaseModel):
         )
 
     def __str__(self):
-        return (
-            f"Payment(id={self.__paymentId}, order={self.__orderId}, "
-            f"method={self.__Method}, amount=Rp{self.__amount:,.0f}, "
-            f"status={self.__status})"
-        )
+        return (f"Payment(id={self.__paymentId}, order={self.__orderId}, "
+                f"method={self.__Method}, amount=Rp{self.__amount:,.0f}, "
+                f"status={self.__status})")
 
     def initiatePayment(self):
         """Inisialisasi pembayaran ke DB dengan status pending."""
@@ -124,33 +138,30 @@ class Payment(BaseModel):
         JsonRepository.insert(DB_FILE, self.to_dict())
 
     def verifyPayment(self):
-        """Polymorphism: Verifikasi pembayaran (simulasi berhasil jika amount > 0)."""
+        """
+        Polymorphism: Verifikasi pembayaran.
+        Disimulasikan berhasil jika jumlah > 0.
+        """
         if self.__amount <= 0:
             raise PaymentFailedException("Jumlah pembayaran tidak valid.")
         self.__status = "success"
         self.__paymentTime = datetime.now()
-        JsonRepository.update(
-            DB_FILE, "paymentId", self.__paymentId, self.to_dict()
-        )
+        JsonRepository.update(DB_FILE, "paymentId", self.__paymentId, self.to_dict())
         return True
 
     def handleCallback(self, data):
         """Handle callback untuk update status."""
         new_status = data.get("status", "failed")
         self.__status = new_status
-        JsonRepository.update(
-            DB_FILE, "paymentId", self.__paymentId, self.to_dict()
-        )
+        JsonRepository.update(DB_FILE, "paymentId", self.__paymentId, self.to_dict())
 
         if new_status == "success":
-            order_data = JsonRepository.find_by_id(
-                "orders.json", "orderId", self.__orderId
-            )
+            order_data = JsonRepository.find_by_id("orders.json", "orderId", self.__orderId)
             if order_data:
                 order_data["status"] = "paid"
-                JsonRepository.update(
-                    "orders.json", "orderId", self.__orderId, order_data
-                )
+                JsonRepository.update("orders.json", "orderId", self.__orderId, order_data)
+
+    # ── Static Methods ──────────────────────────────────────
 
     @staticmethod
     def count_by_status(status):
@@ -160,10 +171,9 @@ class Payment(BaseModel):
     @staticmethod
     def total_paid():
         all_data = JsonRepository.find_all(DB_FILE)
-        return sum(
-            float(d.get("amount", 0))
-            for d in all_data if d.get("status") == "success"
-        )
+        return sum(float(d.get("amount", 0)) for d in all_data if d.get("status") == "success")
+
+    # ── Class Methods ───────────────────────────────────────
 
     @classmethod
     def create(cls, data_dict):

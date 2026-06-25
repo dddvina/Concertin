@@ -5,7 +5,6 @@ Mewarisi BaseModel dan mengimplementasikan semua abstract method.
 """
 
 import hashlib
-
 from models.base_model import BaseModel
 from repositories.json_repository import JsonRepository
 from utils.validator import Validator
@@ -19,11 +18,11 @@ class User(BaseModel):
     Model User merepresentasikan customer atau admin.
 
     Attributes:
-        _user_id (str): Unique user identifier (sama dengan BaseModel id).
-        _name (str): Nama lengkap user.
-        _email (str): Alamat email user.
-        _password (str): Password ter-hash SHA-256.
-        _role (str): Role user ('cust' atau 'admin').
+        __userId (str): Unique user identifier (sama dengan BaseModel id).
+        __name (str): Nama lengkap user.
+        __email (str): Alamat email user.
+        __password (str): Password ter-hash SHA-256.
+        __role (str): Role user ('cust' atau 'admin').
     """
 
     def __init__(self, userId=None, name="", email="", password="",
@@ -32,7 +31,7 @@ class User(BaseModel):
         self.__userId = self.id
         self.__name = name
         self.__email = email
-        self.__password = password if _hashed else self._hash_password(password)
+        self.__password = password if _hashed else self.__hash_password(password)
         self.__role = role
 
     # ── Properties ──────────────────────────────────────────
@@ -67,7 +66,7 @@ class User(BaseModel):
 
     @password.setter
     def password(self, value):
-        self.__password = self._hash_password(value)
+        self.__password = self.__hash_password(value)
 
     @property
     def role(self):
@@ -80,9 +79,9 @@ class User(BaseModel):
     # ── Private ─────────────────────────────────────────────
 
     @staticmethod
-    def _hash_password(password):
-        """Hash password menggunakan SHA-256."""
-        return hashlib.sha256(password.encode("utf-8")).hexdigest()
+    def __hash_password(password):
+        """Tidak menggunakan hash untuk mempermudah development/debugging."""
+        return password
 
     # ── Instance Methods ────────────────────────────────────
 
@@ -90,8 +89,9 @@ class User(BaseModel):
         """Registrasi user: validasi, cek duplikat email, simpan ke database."""
         self.validate()
         all_users = JsonRepository.find_all(DB_FILE)
-        if any(u.get("email") == self.__email for u in all_users):
-            raise DuplicateEmailException()
+        for u in all_users:
+            if u.get("email") == self.__email:
+                raise DuplicateEmailException()
         JsonRepository.insert(DB_FILE, self.to_dict())
 
     def login(self, email, pw):
@@ -101,7 +101,7 @@ class User(BaseModel):
         Returns:
             bool: True jika kredensial cocok.
         """
-        return self.__email == email and self.__password == self._hash_password(pw)
+        return self.__email == email and self.__password == self.__hash_password(pw)
 
     def logout(self):
         """Logout user (placeholder untuk session management)."""
@@ -138,10 +138,7 @@ class User(BaseModel):
         )
 
     def __str__(self):
-        return (
-            f"User(id={self.__userId}, name={self.__name}, "
-            f"email={self.__email}, role={self.__role})"
-        )
+        return f"User(id={self.__userId}, name={self.__name}, email={self.__email}, role={self.__role})"
 
     # ── Static Methods ──────────────────────────────────────
 

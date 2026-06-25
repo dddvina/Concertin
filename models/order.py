@@ -5,7 +5,6 @@ Mewarisi BaseModel dan mengimplementasikan semua abstract method.
 """
 
 from datetime import datetime
-
 from models.base_model import BaseModel
 from repositories.json_repository import JsonRepository
 from utils.validator import Validator
@@ -14,7 +13,17 @@ DB_FILE = "orders.json"
 
 
 class Order(BaseModel):
-    """Model Order merepresentasikan pesanan customer."""
+    """
+    Model Order merepresentasikan pesanan customer.
+
+    Attributes:
+        __orderId (str): Unique order identifier.
+        __userId (str): ID user yang memesan (FK).
+        __concertId (str): ID konser terkait (FK).
+        __totalAmount (float): Total jumlah yang harus dibayar.
+        __orderDate (datetime): Tanggal dan waktu pesanan dibuat.
+        __status (str): Status order ("pending", "paid", "cancelled").
+    """
 
     def __init__(self, orderId=None, userId="", concertId="", totalAmount=0.0,
                  orderDate=None, status="pending", created_at=None):
@@ -23,8 +32,15 @@ class Order(BaseModel):
         self.__userId = userId
         self.__concertId = concertId
         self.__totalAmount = float(totalAmount)
-        self.__orderDate = self._parse_datetime(orderDate) or datetime.now()
+        if orderDate is None:
+            self.__orderDate = datetime.now()
+        elif isinstance(orderDate, str):
+            self.__orderDate = datetime.fromisoformat(orderDate)
+        else:
+            self.__orderDate = orderDate
         self.__status = status
+
+    # ── Properties ──────────────────────────────────────────
 
     @property
     def orderId(self):
@@ -64,7 +80,10 @@ class Order(BaseModel):
 
     @orderDate.setter
     def orderDate(self, value):
-        self.__orderDate = self._parse_datetime(value) or self.__orderDate
+        if isinstance(value, str):
+            self.__orderDate = datetime.fromisoformat(value)
+        else:
+            self.__orderDate = value
 
     @property
     def status(self):
@@ -74,12 +93,12 @@ class Order(BaseModel):
     def status(self, value):
         self.__status = value
 
+    # ── Instance Methods ────────────────────────────────────
+
     def validate(self):
         Validator.validate_not_empty(self.__userId, "userId")
         Validator.validate_not_empty(self.__concertId, "concertId")
-        Validator.validate_enum(
-            self.__status, ["pending", "paid", "cancelled"], "status"
-        )
+        Validator.validate_enum(self.__status, ["pending", "paid", "cancelled"], "status")
 
     def to_dict(self):
         return {
@@ -105,10 +124,8 @@ class Order(BaseModel):
         )
 
     def __str__(self):
-        return (
-            f"Order(id={self.__orderId}, user={self.__userId}, "
-            f"total=Rp{self.__totalAmount:,.0f}, status={self.__status})"
-        )
+        return (f"Order(id={self.__orderId}, user={self.__userId}, "
+                f"total=Rp{self.__totalAmount:,.0f}, status={self.__status})")
 
     def createOrder(self):
         """Simpan order ke DB."""
@@ -119,33 +136,24 @@ class Order(BaseModel):
     def cancelOrder(self):
         """Batalkan order dan kembalikan kuota tiket."""
         self.__status = "cancelled"
-        JsonRepository.update(
-            DB_FILE, "orderId", self.__orderId, self.to_dict()
-        )
+        JsonRepository.update(DB_FILE, "orderId", self.__orderId, self.to_dict())
 
         from models.order_item import OrderItem
         items = OrderItem.get_by_order(self.__orderId)
         for item in items:
-            ticket_data = JsonRepository.find_by_id(
-                "tickets.json", "ticketId", item.ticketId
-            )
+            ticket_data = JsonRepository.find_by_id("tickets.json", "ticketId", item.ticketId)
             if ticket_data:
-                ticket_data["remainingQuota"] = (
-                    ticket_data.get("remainingQuota", 0) + item.quantity
-                )
-                JsonRepository.update(
-                    "tickets.json", "ticketId", item.ticketId, ticket_data
-                )
+                ticket_data["remainingQuota"] = ticket_data.get("remainingQuota", 0) + item.quantity
+                JsonRepository.update("tickets.json", "ticketId", item.ticketId, ticket_data)
 
     def getByUser(self, user_id):
         all_data = JsonRepository.find_all(DB_FILE)
-        return [
-            Order.from_dict(d) for d in all_data
-            if d.get("userId") == user_id
-        ]
+        return [Order.from_dict(d) for d in all_data if d.get("userId") == user_id]
 
     def getStatus(self):
         return self.__status
+
+    # ── Static Methods ──────────────────────────────────────
 
     @staticmethod
     def count_by_status(status):
@@ -155,10 +163,9 @@ class Order(BaseModel):
     @staticmethod
     def total_revenue():
         all_data = JsonRepository.find_all(DB_FILE)
-        return sum(
-            float(d.get("totalAmount", 0))
-            for d in all_data if d.get("status") == "paid"
-        )
+        return sum(float(d.get("totalAmount", 0)) for d in all_data if d.get("status") == "paid")
+
+    # ── Class Methods ───────────────────────────────────────
 
     @classmethod
     def create(cls, data_dict):

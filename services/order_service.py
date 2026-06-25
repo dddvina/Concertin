@@ -5,7 +5,6 @@ Menyembunyikan kompleksitas pembuatan order dan relasi komposisi.
 
 from models.order import Order
 from models.order_item import OrderItem
-from repositories.json_repository import JsonRepository
 from services.ticket_service import TicketService
 from utils.exceptions import ConcertInException, OrderNotFoundException
 
@@ -17,9 +16,9 @@ class OrderService:
     def create_order(user_id, concert_id, ticket_id, quantity):
         try:
             # Reserve tiket terlebih dahulu
-            TicketService.reserve_ticket(ticket_id, quantity)
+            ticket = TicketService.reserve_ticket(ticket_id, quantity)
 
-            # Hitung subtotal via polymorphism
+            # Buat order item dummy untuk hitung subtotal dengan polymorphism
             dummy_item = OrderItem(ticketId=ticket_id, quantity=quantity)
             subtotal = dummy_item.calcSubtotal()
 
@@ -48,20 +47,15 @@ class OrderService:
     @staticmethod
     def cancel_order(order_id):
         try:
-            data = JsonRepository.find_by_id(
-                "orders.json", "orderId", order_id
-            )
+            from repositories.json_repository import JsonRepository
+            data = JsonRepository.find_by_id("orders.json", "orderId", order_id)
             if not data:
                 raise OrderNotFoundException()
-
             order = Order.from_dict(data)
             if order.status == "cancelled":
                 raise ConcertInException("Order sudah dibatalkan.")
             if order.status == "paid":
-                raise ConcertInException(
-                    "Order yang sudah dibayar tidak dapat dibatalkan."
-                )
-
+                raise ConcertInException("Order yang sudah dibayar tidak dapat dibatalkan.")
             order.cancelOrder()
             return order
         except ConcertInException:
@@ -79,6 +73,7 @@ class OrderService:
     @staticmethod
     def get_all_orders():
         try:
+            from repositories.json_repository import JsonRepository
             all_data = JsonRepository.find_all("orders.json")
             return [Order.from_dict(d) for d in all_data]
         except Exception as e:
@@ -86,6 +81,7 @@ class OrderService:
 
     @staticmethod
     def get_order_by_id(order_id):
+        from repositories.json_repository import JsonRepository
         data = JsonRepository.find_by_id("orders.json", "orderId", order_id)
         if not data:
             raise OrderNotFoundException()
