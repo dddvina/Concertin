@@ -1,10 +1,9 @@
 """
 Model User untuk aplikasi ConcertIn.
-Merepresentasikan user (customer dan admin) dengan kemampuan autentikasi.
+Merepresentasikan user dengan kemampuan autentikasi.
 Mewarisi BaseModel dan mengimplementasikan semua abstract method.
 """
 
-import hashlib
 from models.base_model import BaseModel
 from repositories.json_repository import JsonRepository
 from utils.validator import Validator
@@ -15,24 +14,21 @@ DB_FILE = "users.json"
 
 class User(BaseModel):
     """
-    Model User merepresentasikan customer atau admin.
+    Model User merepresentasikan customer aplikasi.
 
     Attributes:
         __userId (str): Unique user identifier (sama dengan BaseModel id).
         __name (str): Nama lengkap user.
         __email (str): Alamat email user.
-        __password (str): Password ter-hash SHA-256.
-        __role (str): Role user ('cust' atau 'admin').
+        __password (str): Password user (plaintext).
     """
 
-    def __init__(self, userId=None, name="", email="", password="",
-                 role="cust", created_at=None, _hashed=False):
+    def __init__(self, userId=None, name="", email="", password="", created_at=None):
         super().__init__(id=userId, created_at=created_at)
         self.__userId = self.id
         self.__name = name
         self.__email = email
-        self.__password = password if _hashed else self.__hash_password(password)
-        self.__role = role
+        self.__password = password
 
     # ── Properties ──────────────────────────────────────────
 
@@ -66,22 +62,7 @@ class User(BaseModel):
 
     @password.setter
     def password(self, value):
-        self.__password = self.__hash_password(value)
-
-    @property
-    def role(self):
-        return self.__role
-
-    @role.setter
-    def role(self, value):
-        self.__role = value
-
-    # ── Private ─────────────────────────────────────────────
-
-    @staticmethod
-    def __hash_password(password):
-        """Tidak menggunakan hash untuk mempermudah development/debugging."""
-        return password
+        self.__password = value
 
     # ── Instance Methods ────────────────────────────────────
 
@@ -96,22 +77,21 @@ class User(BaseModel):
 
     def login(self, email, pw):
         """
-        Autentikasi user dengan email dan password.
+        Autentikasi user dengan email dan password langsung (plaintext).
 
         Returns:
             bool: True jika kredensial cocok.
         """
-        return self.__email == email and self.__password == self.__hash_password(pw)
+        return self.__email == email and self.__password == pw
 
     def logout(self):
-        """Logout user (placeholder untuk session management)."""
+        """Logout user (placeholder untuk session management / membersihkan state)."""
         pass
 
     def validate(self):
         """Validasi atribut user."""
         Validator.validate_not_empty(self.__name, "name")
         Validator.validate_email(self.__email)
-        Validator.validate_enum(self.__role, ["cust", "admin"], "role")
 
     def to_dict(self):
         """Konversi User ke dictionary."""
@@ -120,7 +100,6 @@ class User(BaseModel):
             "name": self.__name,
             "email": self.__email,
             "password": self.__password,
-            "role": self.__role,
             "created_at": self.created_at.isoformat()
         }
 
@@ -132,13 +111,11 @@ class User(BaseModel):
             name=data.get("name", ""),
             email=data.get("email", ""),
             password=data.get("password", ""),
-            role=data.get("role", "cust"),
-            created_at=data.get("created_at"),
-            _hashed=True
+            created_at=data.get("created_at")
         )
 
     def __str__(self):
-        return f"User(id={self.__userId}, name={self.__name}, email={self.__email}, role={self.__role})"
+        return f"User(id={self.__userId}, name={self.__name}, email={self.__email})"
 
     # ── Static Methods ──────────────────────────────────────
 
@@ -146,12 +123,6 @@ class User(BaseModel):
     def count_all():
         """Hitung total jumlah user."""
         return len(JsonRepository.find_all(DB_FILE))
-
-    @staticmethod
-    def get_by_role(role):
-        """Ambil semua user dengan role tertentu."""
-        all_users = JsonRepository.find_all(DB_FILE)
-        return [User.from_dict(u) for u in all_users if u.get("role") == role]
 
     # ── Class Methods ───────────────────────────────────────
 
@@ -161,8 +132,7 @@ class User(BaseModel):
         user = cls(
             name=data_dict.get("name", ""),
             email=data_dict.get("email", ""),
-            password=data_dict.get("password", ""),
-            role=data_dict.get("role", "cust")
+            password=data_dict.get("password", "")
         )
         user.register()
         return user

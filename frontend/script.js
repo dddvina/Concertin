@@ -222,7 +222,6 @@ class ConcertApp {
             this.renderGenreControls();
             this.renderConcerts();
         } catch (err) {
-            // Fallback to static data if API is not running
             this.concerts = ConcertApp.FALLBACK_DATA;
             this.renderGenreControls();
             this.renderConcerts();
@@ -261,7 +260,7 @@ class ConcertApp {
     getFilteredConcerts() {
         const kw = this.searchKeyword.toLowerCase().trim();
         return this.concerts.filter(c => {
-            const searchable = `${c.title} ${(c.artistLineup || c.artists || []).join(' ')} ${c.venueName || c.venue || ''} ${c.genre}`.toLowerCase();
+            const searchable = `${c.title} ${(c.artists || []).join(' ')} ${c.venue || ''} ${c.genre}`.toLowerCase();
             const matchKw = !kw || searchable.includes(kw);
             const matchGenre = this.activeGenre === 'all' || c.genre === this.activeGenre;
             return matchKw && matchGenre;
@@ -317,7 +316,6 @@ class ConcertApp {
 
         if (emptyState) emptyState.classList.toggle('show', filtered.length === 0);
 
-        // Bind buy buttons — require auth
         grid.querySelectorAll('[data-book-concert]').forEach(btn => {
             btn.addEventListener('click', () => {
                 const cid = btn.dataset.bookConcert;
@@ -329,7 +327,6 @@ class ConcertApp {
         });
     }
 
-    // Fallback data when API isn't running
     static FALLBACK_DATA = [
         { title: 'Java Jazz Festival 2026', artistLineup: ['Tulus', 'Ardhito Pramono', 'Nadin Amizah'], venueName: 'JIExpo Kemayoran', venueAddress: 'Jakarta', dateTime: '2026-08-15T19:00:00', genre: 'Jazz', minPrice: 850000, totalSlots: 124, concertId: '' },
         { title: 'Rockdut Fest', artistLineup: ['Denny Caknan', 'Mahalini', 'Fiersa Besari'], venueName: 'Stadion GBK', venueAddress: 'Jakarta', dateTime: '2026-09-20T19:00:00', genre: 'Pop', minPrice: 450000, totalSlots: 89, concertId: '' },
@@ -338,12 +335,160 @@ class ConcertApp {
     ];
 }
 
+// ── Orders Manager (New OOP Layer for orders page) ───────
+class OrdersApp {
+    async init() {
+        NavbarRenderer.update();
+        if (!AuthManager.requireAuth('index.html')) return;
+        
+        // Daftarkan fungsi ke window agar bisa dipanggil dari HTML string (onclick)
+        window.payOrder = (orderId) => this.payOrder(orderId);
+        window.cancelOrder = (orderId) => this.cancelOrder(orderId);
+        window.showTicketInfo = () => this.showTicketInfo();
+
+        await this.loadOrders();
+    }
+
+    async loadOrders() {
+        const container = document.getElementById('ordersContainer');
+        if (!container) return;
+        container.innerHTML = '<div class="spinner"></div>';
+
+        try {
+            const user = AuthManager.getUser();
+            const data = await APIClient.get('/api/orders/user/' + user.userId);
+            const orders = data.orders || [];
+            
+            if (orders.length === 0) {
+                container.innerHTML = '<div class="empty-state show">Belum ada pesanan tiket. <br><br><a href="index.html" class="btn btn-primary btn-sm">Cari Konser</a></div>';
+                return;
+            }
+            
+            orders.sort((a,b) => new Date(b.orderDate) - new Date(a.orderDate));
+            
+            container.innerHTML = orders.map(o => {
+                const date = new Date(o.orderDate).toLocaleString('id-ID');
+                let actionHtml = '';
+                
+                if (o.status === 'pending') {
+                    actionHtml = `
+                        <div class="order-actions">
+                            <button class="btn btn-success btn-sm" onclick="payOrder('${o.orderId}')"><i class="fas fa-money-bill-wave"></i> Bayar</button>
+                            <button class="btn btn-danger btn-sm" onclick="cancelOrder('${o.orderId}')"><i class="fas fa-times"></i> Batal</button>
+                        </div>
+                    `;
+                } else if (o.status === 'paid') {
+                    actionHtml = `
+                        <div class="order-actions">
+                            <button class="btn btn-soft btn-sm" onclick="showTicketInfo()"><i class="fas fa-qrcode"></i> Lihat Tiket</button>
+                        </div>
+                    `;
+                }
+                
+                return `
+                    <div class="order-card">
+                        <div class="order-header">
+                            <h3>${o.concertTitle}</h3>
+                            <span class="order-status ${o.status}">${o.status === 'paid' ? 'LUNAS' : (o.status === 'pending' ? 'PENDING' : 'DIBATALKAN')}</span>
+                        </div>
+                        <div class="order-details">
+                            <span>ID Pesanan</span><span>${o.orderId}</span>
+                            <span>Tanggal Pesan</span><span>${date}</span>
+                            <span>Total Bayar</span><span>Rp${o.totalAmount.toLocaleString('id-ID')}</span>
+                        </div>
+                        ${actionHtml}
+                    </div>
+                `;
+            }).join('');
+        } catch (err) {
+            container.innerHTML = '<div class="empty-state show">Gagal memuat pesanan. Pastikan server backend API berjalan.</div>';
+            Toast.error('Gagal memuat daftar pesanan.');
+        }
+    }
+
+    async payOrder(orderId) {
+        const { value: paymentMethod } = await Swal.fire({
+            title: 'Pilih Metode Pembayaran',
+            input: 'select',
+            inputOptions: {
+                'transfer': 'Transfer Bank',
+                'gopay': 'GoPay / ShopeePay',
+                'ovo': 'OVO',
+                'qris': 'QRIS / M-Banking'
+            },
+            inputPlaceholder: '--- Pilih Metode ---',
+            showCancelButton: true,
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#dc3545',
+            confirmButtonText: 'Lanjutkan Pembayaran',
+            cancelButtonText: 'Batal',
+            inputValidator: (value) => {
+                if (!value) return 'Kamu harus memilih metode pembayaran terlebih dahulu!';
+            }
+        });
+
+        if (paymentMethod) {
+            try {
+                await APIClient.post('/api/payments', { orderId: orderId, method: paymentMethod });
+                Swal.fire({
+                    title: 'Pembayaran Berhasil!',
+                    text: `Metode ${paymentMethod.toUpperCase()} sukses diproses.`,
+                    icon: 'success',
+                    confirmButtonColor: '#28a745'
+                });
+                this.loadOrders();
+            } catch (err) {
+                Toast.error(err.message);
+            }
+        }
+    }
+
+    async cancelOrder(orderId) {
+        const result = await Swal.fire({
+            title: 'Apakah Anda yakin?',
+            text: 'Pesanan yang dibatalkan tidak dapat dikembalikan.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Ya, Batalkan Pesanan',
+            cancelButtonText: 'Kembali'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                await APIClient.post('/api/orders/cancel', { orderId: orderId });
+                Swal.fire({
+                    title: 'Dibatalkan!',
+                    text: 'Pesanan Anda telah berhasil dibatalkan.',
+                    icon: 'success',
+                    confirmButtonColor: '#28a745'
+                });
+                this.loadOrders();
+            } catch (err) {
+                Toast.error(err.message);
+            }
+        }
+    }
+
+    showTicketInfo() {
+        Swal.fire({
+            title: 'Informasi Pengiriman Tiket',
+            text: 'Tiket QR Code akan dikirimkan ke email Anda mendekati hari H pelaksanaan konser.',
+            icon: 'info',
+            confirmButtonColor: '#28a745'
+        });
+    }
+}
+
 // ── Auto-init berdasarkan halaman ───────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     const page = document.body.dataset.page;
 
     if (page === 'home') {
         new ConcertApp().init();
+    } else if (page === 'orders') {
+        new OrdersApp().init(); // Otomatis inisialisasi class halaman orders
     } else {
         NavbarRenderer.update();
     }

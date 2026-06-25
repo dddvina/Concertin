@@ -8,12 +8,12 @@ class ConcertInException(Exception):
     """Base exception untuk seluruh error di aplikasi ConcertIn."""
 
     def __init__(self, message="Terjadi kesalahan pada sistem ConcertIn."):
-        self._message = message
-        super().__init__(self._message)
+        self.__message = message
+        super().__init__(self.__message)
 
     @property
     def message(self):
-        return self._message
+        return self.__message
 
 
 class UserNotFoundException(ConcertInException):
@@ -62,15 +62,13 @@ class ValidationException(ConcertInException):
     """Exception ketika validasi input gagal."""
 
     def __init__(self, message="Validasi gagal.", field=None):
-        self._field = field
-        full_message = (
-            f"Validasi gagal pada field '{field}': {message}" if field else message
-        )
+        self.__field = field
+        full_message = f"Validasi gagal pada field '{field}': {message}" if field else message
         super().__init__(full_message)
 
     @property
     def field(self):
-        return self._field
+        return self.__field
 
 
 class DuplicateEmailException(ConcertInException):

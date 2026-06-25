@@ -5,7 +5,6 @@ Berisi static method untuk validasi input menggunakan regex dan business rules.
 
 import re
 from datetime import datetime
-
 from utils.exceptions import ValidationException
 
 
@@ -34,10 +33,8 @@ class Validator:
     @staticmethod
     def validate_not_empty(value, field_name):
         """Validasi bahwa value tidak kosong atau None."""
-        if value is None or (isinstance(value, str) and not value.strip()):
-            raise ValidationException(
-                f"{field_name} tidak boleh kosong.", field_name
-            )
+        if value is None or (isinstance(value, str) and value.strip() == ""):
+            raise ValidationException(f"{field_name} tidak boleh kosong.", field_name)
         return True
 
     @staticmethod
@@ -46,13 +43,9 @@ class Validator:
         try:
             num = float(value)
             if num <= 0:
-                raise ValidationException(
-                    f"{field_name} harus berupa angka positif.", field_name
-                )
+                raise ValidationException(f"{field_name} harus berupa angka positif.", field_name)
         except (TypeError, ValueError):
-            raise ValidationException(
-                f"{field_name} harus berupa angka.", field_name
-            )
+            raise ValidationException(f"{field_name} harus berupa angka.", field_name)
         return True
 
     @staticmethod

@@ -6,6 +6,8 @@
     <title>Pesanan Saya | ConcertIn</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Library SweetAlert2 untuk mengubah pop-up menjadi notifikasi bawaan aplikasi -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body data-page="orders">
     <nav class="site-nav">
@@ -19,94 +21,12 @@
     <main class="orders-page">
         <h1>Pesanan Saya</h1>
         <div id="ordersContainer">
+            <!-- Loading spinner otomatis berjalan sebelum data dari APIClient selesai dimuat -->
             <div class="spinner"></div>
         </div>
     </main>
 
+    <!-- Menghubungkan ke file logika utama aplikasi -->
     <script src="script.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-            if (!AuthManager.requireAuth('index.html')) return;
-            const user = AuthManager.getUser();
-            const container = document.getElementById('ordersContainer');
-            
-            async function loadOrders() {
-                try {
-                    const data = await APIClient.get('/api/orders/user/' + user.userId);
-                    const orders = data.orders || [];
-                    
-                    if (orders.length === 0) {
-                        container.innerHTML = '<div class="empty-state show">Belum ada pesanan tiket. <br><br><a href="index.html" class="btn btn-primary btn-sm">Cari Konser</a></div>';
-                        return;
-                    }
-                    
-                    // Sort descending by date
-                    orders.sort((a,b) => new Date(b.orderDate) - new Date(a.orderDate));
-                    
-                    container.innerHTML = orders.map(o => {
-                        const date = new Date(o.orderDate).toLocaleString('id-ID');
-                        let actionHtml = '';
-                        
-                        if (o.status === 'pending') {
-                            actionHtml = `
-                                <div class="order-actions">
-                                    <button class="btn btn-success btn-sm" onclick="payOrder('${o.orderId}')"><i class="fas fa-money-bill-wave"></i> Bayar</button>
-                                    <button class="btn btn-danger btn-sm" onclick="cancelOrder('${o.orderId}')"><i class="fas fa-times"></i> Batal</button>
-                                </div>
-                            `;
-                        } else if (o.status === 'paid') {
-                            actionHtml = `
-                                <div class="order-actions">
-                                    <button class="btn btn-soft btn-sm" onclick="alert('Tiket akan dikirimkan ke email Anda mendekati hari H konser.')"><i class="fas fa-qrcode"></i> Lihat Tiket</button>
-                                </div>
-                            `;
-                        }
-                        
-                        return `
-                            <div class="order-card">
-                                <div class="order-header">
-                                    <h3>${o.concertTitle}</h3>
-                                    <span class="order-status ${o.status}">${o.status === 'paid' ? 'LUNAS' : (o.status === 'pending' ? 'PENDING' : 'DIBATALKAN')}</span>
-                                </div>
-                                <div class="order-details">
-                                    <span>ID Pesanan</span><span>${o.orderId}</span>
-                                    <span>Tanggal Pesan</span><span>${date}</span>
-                                    <span>Total Bayar</span><span>Rp${o.totalAmount.toLocaleString('id-ID')}</span>
-                                </div>
-                                ${actionHtml}
-                            </div>
-                        `;
-                    }).join('');
-                } catch (err) {
-                    container.innerHTML = '<div class="empty-state show">Gagal memuat pesanan. Pastikan server backend API berjalan.</div>';
-                    Toast.error('Gagal memuat daftar pesanan.');
-                }
-            }
-            
-            window.payOrder = async (orderId) => {
-                if (!confirm('Lanjutkan pembayaran menggunakan Transfer Bank?')) return;
-                try {
-                    await APIClient.post('/api/payments', { orderId: orderId, method: 'transfer' });
-                    Toast.success('Pembayaran berhasil!');
-                    loadOrders();
-                } catch (err) {
-                    Toast.error(err.message);
-                }
-            };
-            
-            window.cancelOrder = async (orderId) => {
-                if (!confirm('Apakah Anda yakin ingin membatalkan pesanan ini?')) return;
-                try {
-                    await APIClient.post('/api/orders/cancel', { orderId: orderId });
-                    Toast.success('Pesanan berhasil dibatalkan.');
-                    loadOrders();
-                } catch (err) {
-                    Toast.error(err.message);
-                }
-            };
-            
-            loadOrders();
-        });
-    </script>
 </body>
 </html>
