@@ -1,0 +1,50 @@
+[
+  {
+    "itemId": "i001-rina-dewa-item-000000000000",
+    "orderId": "o001-rina-dewa-0000-000000000000",
+    "ticketId": "t002-dewa-reg-0000-000000000000",
+    "quantity": 2,
+    "subTotal": 700000.0,
+    "created_at": "2026-05-01T14:00:00"
+  },
+  {
+    "itemId": "d82d60cc-0454-453b-882b-ffdd860040eb",
+    "orderId": "bfdb6cb4-3143-4546-a21e-49462787b779",
+    "ticketId": "t006-kpop-reg-0000-000000000000",
+    "quantity": 3,
+    "subTotal": 1950000.0,
+    "created_at": "2026-06-15T20:05:48.299320"
+  },
+  {
+    "itemId": "5ead7a57-8482-4873-820e-a31fb1617780",
+    "orderId": "dc3618f8-6821-4a83-8ee8-40006a7519d6",
+    "ticketId": "t003-hvl-vip-0000-000000000000",
+    "quantity": 2,
+    "subTotal": 1000000.0,
+    "created_at": "2026-06-15T20:17:28.812974"
+  },
+  {
+    "itemId": "189fd312-6c95-41ba-bed2-e5f52d9d60c5",
+    "orderId": "f94cec9c-ccc2-4ecd-b854-52ebc8a58921",
+    "ticketId": "t001-dewa-vip-0000-000000000000",
+    "quantity": 1,
+    "subTotal": 750000.0,
+    "created_at": "2026-06-15T20:53:08.243059"
+  },
+  {
+    "itemId": "71ec74bc-6af3-4200-bb26-34a0975e1c18",
+    "orderId": "e73f2fa8-aa69-4eaf-9f6e-9bf1ac016e57",
+    "ticketId": "t005-kpop-vip-0000-000000000000",
+    "quantity": 1,
+    "subTotal": 1500000.0,
+    "created_at": "2026-06-15T21:37:12.853509"
+  },
+  {
+    "itemId": "ee0506d3-a671-4172-b319-e0d6b2318959",
+    "orderId": "76c43519-1b06-4ace-a0f2-9bee8cbea723",
+    "ticketId": "t003-hvl-vip-0000-000000000000",
+    "quantity": 2,
+    "subTotal": 1000000.0,
+    "created_at": "2026-06-17T11:51:43.595184"
+  }
+]

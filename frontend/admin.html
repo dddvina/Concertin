@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel Admin | ConcertIn</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav id="navbar" style="background: var(--bg-secondary);">
+        <a href="index.html" class="logo"><i class="fas fa-music"></i> Concert<span>In</span> <span style="font-size: 0.8rem; background: var(--accent); color: var(--bg-main); padding: 2px 5px; border-radius: 5px; margin-left: 5px;">ADMIN</span></a>
+        <div class="nav-actions" id="navActions"></div>
+    </nav>
+    <main style="margin-top: 100px; padding: 0 5%;">
+        <h2 class="section-title">Pendaftaran Akun Baru</h2>
+        <div style="max-width: 600px; margin: 0 auto; background: var(--glass-bg); padding: 3rem; border-radius: 15px; border: 1px solid var(--glass-border);">
+            <form id="adminRegisterForm">
+                <div class="form-group">
+                    <label>Nama Lengkap</label>
+                    <input type="text" id="adminRegName" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="adminRegEmail" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="adminRegPassword" class="form-control" required minlength="8">
+                </div>
+                <div class="form-group">
+                    <label>Role</label>
+                    <select id="adminRegRole" class="form-control" style="background-color: var(--bg-secondary); cursor: pointer; color: white;" required>
+                        <option value="cust">Customer (Pengguna Umum)</option>
+                        <option value="admin">Administrator (Panel Akses)</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;"><i class="fas fa-user-plus"></i> Daftarkan Akun</button>
+            </form>
+        </div>
+    </main>
+    <script src="script.js"></script>
+</body>
+</html>

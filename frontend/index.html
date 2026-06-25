@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sistem Pemesanan Tiket Konser Terbaik. Temukan dan pesan tiket konser artis favoritmu dengan mudah dan cepat.">
+    <title>ConcertIn | Book Your Next Live Experience</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav id="navbar">
+        <a href="#" class="logo">
+            <i class="fas fa-music"></i> Concert<span>In</span>
+        </a>
+        <ul class="nav-links">
+            <li><a href="#" class="active">Beranda</a></li>
+            <li><a href="#concerts">Konser</a></li>
+            <li><a href="tentang.html">Tentang</a></li>
+            <li><a href="kontak.html">Kontak</a></li>
+        </ul>
+        <div class="nav-actions" id="navActions">
+            <a href="login.html" class="btn btn-outline" style="margin-right: 10px;">Masuk</a>
+            <a href="register.html" class="btn btn-primary">Daftar</a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="hero">
+        <img src="assets/hero.png" alt="Live Concert Audience with Neon Lights" class="hero-bg">
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <h1>Rasakan Euphoria<br>Live Music</h1>
+            <p>Platform pemesanan tiket konser terpercaya. Dapatkan tiket VIP dan Regular untuk artis lokal hingga internasional, semuanya dalam satu genggaman.</p>
+            <div class="hero-btns">
+                <a href="#concerts" class="btn btn-primary"><i class="fas fa-ticket-alt"></i> Jelajahi Konser</a>
+                <a href="#" class="btn btn-outline"><i class="fas fa-search"></i> Cari Artis</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main>
+        <!-- Concerts Section -->
+        <section id="concerts" class="concerts">
+            <h2 class="section-title">Konser Mendatang</h2>
+            <div class="concert-grid" id="concertGrid">
+                <!-- Concert cards will be injected here by script.js -->
+            </div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

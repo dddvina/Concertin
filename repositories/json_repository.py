@@ -1,0 +1,106 @@
+"""
+Modul JSON Repository untuk aplikasi ConcertIn.
+Menyediakan persistence data menggunakan file JSON sebagai database lokal.
+Semua operasi file dibungkus try-except untuk error handling.
+"""
+
+import json
+import os
+
+
+class JsonRepository:
+    """
+    Repository class untuk penyimpanan data berbasis JSON.
+    Menangani semua operasi CRUD pada file JSON di folder database.
+    """
+
+    _base_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "database"
+    )
+
+    @classmethod
+    def _get_filepath(cls, filename):
+        """Mendapatkan full path untuk sebuah filename."""
+        return os.path.join(cls._base_path, filename)
+
+    @classmethod
+    def load(cls, filename):
+        """
+        Memuat semua record dari file JSON.
+
+        Args:
+            filename (str): Nama file JSON.
+
+        Returns:
+            list: Daftar record (dict). Mengembalikan list kosong jika error.
+        """
+        try:
+            filepath = cls._get_filepath(filename)
+            if not os.path.exists(filepath):
+                return []
+            with open(filepath, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return data if isinstance(data, list) else []
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"[ERROR] Gagal memuat file {filename}: {e}")
+            return []
+
+    @classmethod
+    def save(cls, filename, data):
+        """
+        Menyimpan list record ke file JSON.
+
+        Args:
+            filename (str): Nama file JSON.
+            data (list): Daftar record yang akan disimpan.
+        """
+        try:
+            filepath = cls._get_filepath(filename)
+            os.makedirs(os.path.dirname(filepath), exist_ok=True)
+            with open(filepath, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False, default=str)
+        except IOError as e:
+            print(f"[ERROR] Gagal menyimpan file {filename}: {e}")
+
+    @classmethod
+    def find_by_id(cls, filename, id_field, id_value):
+        """
+        Mencari satu record berdasarkan ID.
+
+        Returns:
+            dict | None: Record yang cocok, atau None jika tidak ditemukan.
+        """
+        data = cls.load(filename)
+        return next(
+            (record for record in data if record.get(id_field) == id_value),
+            None
+        )
+
+    @classmethod
+    def find_all(cls, filename):
+        """Mengambil semua record dari file JSON."""
+        return cls.load(filename)
+
+    @classmethod
+    def insert(cls, filename, record):
+        """Menyisipkan record baru ke file JSON."""
+        data = cls.load(filename)
+        data.append(record)
+        cls.save(filename, data)
+
+    @classmethod
+    def update(cls, filename, id_field, id_value, updated_record):
+        """Memperbarui record yang ada di file JSON berdasarkan ID."""
+        data = cls.load(filename)
+        for i, record in enumerate(data):
+            if record.get(id_field) == id_value:
+                data[i] = updated_record
+                break
+        cls.save(filename, data)
+
+    @classmethod
+    def delete(cls, filename, id_field, id_value):
+        """Menghapus record dari file JSON berdasarkan ID."""
+        data = cls.load(filename)
+        data = [r for r in data if r.get(id_field) != id_value]
+        cls.save(filename, data)

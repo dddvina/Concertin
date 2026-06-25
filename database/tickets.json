@@ -1,0 +1,56 @@
+[
+  {
+    "ticketId": "t001-dewa-vip-0000-000000000000",
+    "concertId": "c001-dewa-1900-0000-000000000000",
+    "category": "VIP",
+    "price": 750000.0,
+    "totalQuota": 100,
+    "remainingQuota": 99,
+    "created_at": "2026-02-05T08:00:00"
+  },
+  {
+    "ticketId": "t002-dewa-reg-0000-000000000000",
+    "concertId": "c001-dewa-1900-0000-000000000000",
+    "category": "REG",
+    "price": 350000.0,
+    "totalQuota": 500,
+    "remainingQuota": 498,
+    "created_at": "2026-02-05T08:00:00"
+  },
+  {
+    "ticketId": "t003-hvl-vip-0000-000000000000",
+    "concertId": "c002-hvl-fest-0000-000000000000",
+    "category": "VIP",
+    "price": 500000.0,
+    "totalQuota": 200,
+    "remainingQuota": 196,
+    "created_at": "2026-02-15T09:00:00"
+  },
+  {
+    "ticketId": "t004-hvl-reg-0000-000000000000",
+    "concertId": "c002-hvl-fest-0000-000000000000",
+    "category": "REG",
+    "price": 250000.0,
+    "totalQuota": 1000,
+    "remainingQuota": 1000,
+    "created_at": "2026-02-15T09:00:00"
+  },
+  {
+    "ticketId": "t005-kpop-vip-0000-000000000000",
+    "concertId": "c003-kpop-night-0000-000000000000",
+    "category": "VIP",
+    "price": 1500000.0,
+    "totalQuota": 50,
+    "remainingQuota": 49,
+    "created_at": "2026-03-05T10:00:00"
+  },
+  {
+    "ticketId": "t006-kpop-reg-0000-000000000000",
+    "concertId": "c003-kpop-night-0000-000000000000",
+    "category": "REG",
+    "price": 650000.0,
+    "totalQuota": 300,
+    "remainingQuota": 297,
+    "created_at": "2026-03-05T10:00:00"
+  }
+]
