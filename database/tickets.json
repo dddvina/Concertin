@@ -61,5 +61,14 @@
     "totalQuota": 150,
     "remainingQuota": 150,
     "created_at": "2026-06-30T20:30:29.404879"
+  },
+  {
+    "ticketId": "bc3e0a48-ee34-4cb7-88a5-7ac15ab3ba08",
+    "concertId": "d1acec2d-b670-4ab1-9919-728e6fee2ca3",
+    "category": "VIP",
+    "price": 5000000.0,
+    "totalQuota": 50,
+    "remainingQuota": 50,
+    "created_at": "2026-06-30T22:45:04.786298"
   }
 ]

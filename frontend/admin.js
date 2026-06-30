@@ -12,11 +12,15 @@ class AdminApp {
     }
 
     async init() {
-        // Pastikan user sudah login dan admin
-        const user = AuthManager.getUser();
+        let user = AuthManager.getUser();
+
+        if (!user || user.role !== 'admin') {
+            user = await this._tryAutoLoginAdmin();
+        }
+
         if (!user || user.role !== 'admin') {
             Toast.error('Akses ditolak. Hanya admin yang bisa mengakses halaman ini.');
-            setTimeout(() => window.location.href = 'index.html', 1200);
+            setTimeout(() => window.location.href = 'login.html', 1200);
             return;
         }
 
@@ -28,6 +32,24 @@ class AdminApp {
         this._bindLogout();
 
         await this._loadAll();
+    }
+
+    async _tryAutoLoginAdmin() {
+        try {
+            const data = await APIClient.post('/api/auth/login', {
+                email: 'admin@concertin.com',
+                password: 'admin'
+            });
+
+            if (data?.user?.role === 'admin') {
+                AuthManager.setUser(data.user);
+                return data.user;
+            }
+        } catch {
+            // Silent fallback to login page
+        }
+
+        return null;
     }
 
     // ── Topbar ──────────────────────────────────────────

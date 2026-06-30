@@ -29,6 +29,24 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=self.FRONTEND_DIR, **kwargs)
 
+    def send_head(self):
+        """Kirim header anti-cache untuk file statis agar perubahan langsung tampil."""
+        path = self.translate_path(self.path)
+        if os.path.isfile(path):
+            ctype = self.guess_type(path)
+            if ctype.startswith(("text/", "application/javascript", "application/json")):
+                self.send_response(200)
+                self.send_header("Content-type", ctype)
+                self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+                self.send_header("Pragma", "no-cache")
+                self.send_header("Expires", "0")
+                f = open(path, 'rb')
+                fs = os.fstat(f.fileno())
+                self.send_header("Content-Length", str(fs.st_size))
+                self.end_headers()
+                return f
+        return super().send_head()
+
     # ── Helper Response ──────────────────────────────────────
 
     def _send_json(self, data, status=200):
