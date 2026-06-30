@@ -108,28 +108,32 @@ class OrderItem(BaseModel):
                 f"ticket={self.__ticketId}, qty={self.__quantity}, "
                 f"subtotal=Rp{self.__subTotal:,.0f})")
 
-    def calcSubtotal(self):
-        """
-        Polymorphism: Menghitung subtotal.
-        Mencari harga tiket di DB dan mengalikan dengan quantity.
-        """
+    def loadTicket(self):
+        from models.ticket import Ticket #Pholymorph
         ticket_data = JsonRepository.find_by_id("tickets.json", "ticketId", self.__ticketId)
-        if ticket_data:
-            price = float(ticket_data.get("price", 0))
-            self.__subTotal = self.__quantity * price
+        return Ticket.from_dict(ticket_data) if ticket_data else None
+
+    def calcSubtotal(self):
+        ticket = self.loadTicket()
+        if ticket:
+            self.__subTotal = self.__quantity * ticket.price
         return self.__subTotal
 
     def updateQty(self, qty):
-        """Update quantity dan hitung ulang subtotal."""
         self.__quantity = int(qty)
         self.calcSubtotal()
         JsonRepository.update(DB_FILE, "itemId", self.__itemId, self.to_dict())
+
+    def releaseQuota(self):
+        ticket = self.loadTicket()
+        if ticket:
+            ticket.remainingQuota = ticket.remainingQuota + self.__quantity
+            JsonRepository.update("tickets.json", "ticketId", ticket.ticketId, ticket.to_dict())
 
     # ── Static Methods ──────────────────────────────────────
 
     @staticmethod
     def get_by_order(order_id):
-        """Ambil semua order item milik sebuah order."""
         all_data = JsonRepository.find_all(DB_FILE)
         return [OrderItem.from_dict(d) for d in all_data if d.get("orderId") == order_id]
 

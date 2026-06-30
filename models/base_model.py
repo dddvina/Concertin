@@ -10,22 +10,8 @@ import uuid
 
 
 class BaseModel(ABC):
-    """
-    Abstract base class untuk seluruh model ConcertIn.
-
-    Attributes:
-        __id (str): Unique identifier menggunakan uuid4.
-        __created_at (datetime): Timestamp pembuatan objek.
-    """
 
     def __init__(self, id=None, created_at=None):
-        """
-        Inisialisasi BaseModel.
-
-        Args:
-            id (str, optional): Unique identifier. Auto-generated jika tidak diberikan.
-            created_at (datetime|str, optional): Timestamp pembuatan. Default: sekarang.
-        """
         self.__id = id if id else str(uuid.uuid4())
         if created_at is None:
             self.__created_at = datetime.now()
@@ -62,8 +48,9 @@ class BaseModel(ABC):
         """Konversi instance ke dictionary untuk serialisasi JSON."""
         pass
 
+    @staticmethod
     @abstractmethod
-    def from_dict(self, data):
+    def from_dict(data):
         """Buat instance dari dictionary."""
         pass
 

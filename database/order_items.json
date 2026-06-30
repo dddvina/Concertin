@@ -14,5 +14,13 @@
     "quantity": 3,
     "subTotal": 4500000.0,
     "created_at": "2026-06-25T20:17:43.209444"
+  },
+  {
+    "itemId": "d911b031-20e5-4eed-b340-955af834e5dd",
+    "orderId": "0e18baa5-856b-4f1c-9af2-3ce393795d12",
+    "ticketId": "t005-kpop-vip-0000-000000000000",
+    "quantity": 3,
+    "subTotal": 4500000.0,
+    "created_at": "2026-06-25T22:19:27.566236"
   }
 ]

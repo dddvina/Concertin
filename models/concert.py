@@ -1,8 +1,5 @@
 """
-Model Concert untuk aplikasi ConcertIn.
-Merepresentasikan event konser dengan informasi venue, lineup, dan jadwal.
-Mewarisi BaseModel dan mengimplementasikan semua abstract method.
-"""
+Model Concert untuk aplikasi ConcertIn."""
 
 from datetime import datetime
 from models.base_model import BaseModel
@@ -13,19 +10,7 @@ DB_FILE = "concerts.json"
 
 
 class Concert(BaseModel):
-    """
-    Model Concert merepresentasikan sebuah event konser.
 
-    Attributes:
-        __concertId (str): Unique concert identifier.
-        __title (str): Judul konser.
-        __artistLineup (list): Daftar artis yang tampil.
-        __venueName (str): Nama venue.
-        __venueAddress (str): Alamat venue.
-        __dateTime (datetime): Tanggal dan waktu konser.
-        __genre (str): Genre musik konser.
-        __status (str): Status konser (upcoming, ongoing, completed, cancelled).
-    """
 
     def __init__(self, concertId=None, title="", artistLineup=None,
                  venueName="", venueAddress="", dateTime=None,
@@ -180,7 +165,6 @@ class Concert(BaseModel):
         return results
 
     def getById(self, concert_id):
-        """Ambil konser berdasarkan ID."""
         data = JsonRepository.find_by_id(DB_FILE, "concertId", concert_id)
         if data:
             return Concert.from_dict(data)

@@ -13,17 +13,7 @@ DB_FILE = "tickets.json"
 
 
 class Ticket(BaseModel):
-    """
-    Model Ticket merepresentasikan tipe tiket untuk sebuah konser.
 
-    Attributes:
-        __ticketId (str): Unique ticket identifier.
-        __concertId (str): ID konser terkait (FK).
-        __category (str): Kategori tiket ('VIP' atau 'REG').
-        __price (float): Harga tiket.
-        __totalQuota (int): Total kuota awal tiket.
-        __remainingQuota (int): Sisa kuota tiket saat ini.
-    """
 
     def __init__(self, ticketId=None, concertId="", category="REG",
                  price=0.0, totalQuota=0, remainingQuota=None, created_at=None):
@@ -149,15 +139,20 @@ class Ticket(BaseModel):
         return True
 
     def getByConcert(self, concert_id):
-        """Ambil semua tiket untuk konser tertentu."""
         all_data = JsonRepository.find_all(DB_FILE)
         return [Ticket.from_dict(d) for d in all_data if d.get("concertId") == concert_id]
+    
+    def loadConcert(self):
+        from models.concert import Concert  
+        data = JsonRepository.find_by_id("concerts.json", "concertId", self.__concertId)
+        self.__concert = Concert.from_dict(data) if data else None
+        return self.__concert
+
 
     # ── Static Methods ──────────────────────────────────────
 
     @staticmethod
     def count_available():
-        """Hitung jumlah tiket yang masih tersedia kuotanya."""
         all_data = JsonRepository.find_all(DB_FILE)
         return sum(1 for d in all_data if d.get("remainingQuota", 0) > 0)
 

@@ -1,7 +1,5 @@
 """
 Model Payment untuk aplikasi ConcertIn.
-Merepresentasikan pembayaran dari suatu pesanan.
-Mewarisi BaseModel dan mengimplementasikan semua abstract method.
 """
 
 from datetime import datetime
@@ -14,17 +12,7 @@ DB_FILE = "payments.json"
 
 
 class Payment(BaseModel):
-    """
-    Model Payment merepresentasikan transaksi pembayaran.
 
-    Attributes:
-        __paymentId (str): Unique payment identifier.
-        __orderId (str): ID order terkait (FK).
-        __Method (str): Metode pembayaran (transfer, ewallet, qris).
-        __amount (float): Jumlah pembayaran.
-        __status (str): Status pembayaran (pending, success, failed).
-        __paymentTime (datetime): Waktu pembayaran.
-    """
 
     def __init__(self, paymentId=None, orderId="", Method="transfer",
                  amount=0.0, status="pending", paymentTime=None, created_at=None):
@@ -131,17 +119,12 @@ class Payment(BaseModel):
                 f"status={self.__status})")
 
     def initiatePayment(self):
-        """Inisialisasi pembayaran ke DB dengan status pending."""
         self.__status = "pending"
         self.__paymentTime = datetime.now()
         self.validate()
         JsonRepository.insert(DB_FILE, self.to_dict())
 
     def verifyPayment(self):
-        """
-        Polymorphism: Verifikasi pembayaran.
-        Disimulasikan berhasil jika jumlah > 0.
-        """
         if self.__amount <= 0:
             raise PaymentFailedException("Jumlah pembayaran tidak valid.")
         self.__status = "success"
@@ -150,16 +133,17 @@ class Payment(BaseModel):
         return True
 
     def handleCallback(self, data):
-        """Handle callback untuk update status."""
         new_status = data.get("status", "failed")
         self.__status = new_status
         JsonRepository.update(DB_FILE, "paymentId", self.__paymentId, self.to_dict())
 
         if new_status == "success":
+            from models.order import Order
             order_data = JsonRepository.find_by_id("orders.json", "orderId", self.__orderId)
             if order_data:
-                order_data["status"] = "paid"
-                JsonRepository.update("orders.json", "orderId", self.__orderId, order_data)
+                order = Order.from_dict(order_data)
+                order.status = "paid"
+                JsonRepository.update("orders.json", "orderId", order.orderId, order.to_dict())
 
     # ── Static Methods ──────────────────────────────────────
 

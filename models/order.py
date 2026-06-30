@@ -13,17 +13,6 @@ DB_FILE = "orders.json"
 
 
 class Order(BaseModel):
-    """
-    Model Order merepresentasikan pesanan customer.
-
-    Attributes:
-        __orderId (str): Unique order identifier.
-        __userId (str): ID user yang memesan (FK).
-        __concertId (str): ID konser terkait (FK).
-        __totalAmount (float): Total jumlah yang harus dibayar.
-        __orderDate (datetime): Tanggal dan waktu pesanan dibuat.
-        __status (str): Status order ("pending", "paid", "cancelled").
-    """
 
     def __init__(self, orderId=None, userId="", concertId="", totalAmount=0.0,
                  orderDate=None, status="pending", created_at=None):
@@ -39,6 +28,9 @@ class Order(BaseModel):
         else:
             self.__orderDate = orderDate
         self.__status = status
+        self.__user = None
+        self.__concert = None
+        self.__orderItems = []
 
     # ── Properties ──────────────────────────────────────────
 
@@ -127,24 +119,56 @@ class Order(BaseModel):
         return (f"Order(id={self.__orderId}, user={self.__userId}, "
                 f"total=Rp{self.__totalAmount:,.0f}, status={self.__status})")
 
+    def loadUser(self):
+        from models.user import User
+        user_data = JsonRepository.find_by_id("users.json", "userId", self.__userId)
+        self.__user = User.from_dict(user_data) if user_data else None
+        return self.__user
+
+    def loadConcert(self):
+        from models.concert import Concert
+        concert = Concert().getById(self.__concertId)
+        self.__concert = concert
+        return concert
+
+    def loadOrderItems(self):
+        """Ambil semua object OrderItem yang menjadi bagian dari order ini."""
+        from models.order_item import OrderItem
+        self.__orderItems = OrderItem.get_by_order(self.__orderId)
+        return self.__orderItems
+
     def createOrder(self):
-        """Simpan order ke DB."""
+        """Validasi user & concert terkait lewat object masing-masing, lalu simpan order."""
         self.validate()
+
+        user = self.loadUser()
+        if user is None:
+            raise ValueError(f"User dengan id '{self.__userId}' tidak ditemukan.")
+
+        concert = self.loadConcert()
+        if concert is None:
+            raise ValueError(f"Concert dengan id '{self.__concertId}' tidak ditemukan.")
+        if concert.status in ("completed", "cancelled"):
+            raise ValueError(
+                f"Tidak dapat membuat order untuk concert berstatus '{concert.status}'."
+            )
+
         JsonRepository.insert(DB_FILE, self.to_dict())
         return self
 
+    def markAsPaid(self):
+        """Tandai order sebagai sudah dibayar (dipanggil oleh Payment saat sukses)."""
+        self.__status = "paid"
+        JsonRepository.update(DB_FILE, "orderId", self.__orderId, self.to_dict())
+
     def cancelOrder(self):
-        """Batalkan order dan kembalikan kuota tiket."""
+        """Batalkan order; kuota tiket dikembalikan lewat object OrderItem (yang lalu manggil Ticket)."""
         self.__status = "cancelled"
         JsonRepository.update(DB_FILE, "orderId", self.__orderId, self.to_dict())
 
-        from models.order_item import OrderItem
-        items = OrderItem.get_by_order(self.__orderId)
+        items = self.loadOrderItems()
         for item in items:
-            ticket_data = JsonRepository.find_by_id("tickets.json", "ticketId", item.ticketId)
-            if ticket_data:
-                ticket_data["remainingQuota"] = ticket_data.get("remainingQuota", 0) + item.quantity
-                JsonRepository.update("tickets.json", "ticketId", item.ticketId, ticket_data)
+            item.releaseQuota()
 
     def getByUser(self, user_id):
         all_data = JsonRepository.find_all(DB_FILE)
