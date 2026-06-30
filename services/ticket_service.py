@@ -24,7 +24,9 @@ class TicketService:
     @staticmethod
     def get_tickets_by_concert(concert_id):
         try:
-            return Ticket().getByConcert(concert_id)
+            from services.concert_service import ConcertService
+            concert = ConcertService.get_concert_by_id(concert_id)
+            return Ticket().getByConcert(concert)
         except Exception as e:
             raise ConcertInException(f"Gagal mengambil tiket: {e}")
 
