@@ -7,7 +7,7 @@ from models.user import User
 from repositories.json_repository import JsonRepository
 from utils.exceptions import (
     UserNotFoundException, InvalidCredentialsException,
-    DuplicateEmailException, ConcertInException
+    DuplicateEmailException, ConcertInException, UnauthorizedException
 )
 
 
@@ -53,6 +53,13 @@ class UserService:
         if not data:
             raise UserNotFoundException()
         return User.from_dict(data)
+
+    @staticmethod
+    def require_admin(user_id):
+        user = UserService.get_user_by_id(user_id)
+        if user.role != "admin":
+            raise UnauthorizedException()
+        return user
 
     @staticmethod
     def get_statistics():

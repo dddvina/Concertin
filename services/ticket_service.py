@@ -4,6 +4,7 @@ Service Ticket untuk aplikasi ConcertIn.
 
 from models.ticket import Ticket
 from repositories.json_repository import JsonRepository
+from services.user_service import UserService
 from utils.exceptions import ConcertInException
 
 
@@ -11,8 +12,9 @@ class TicketService:
     """Layer service untuk entitas Ticket."""
 
     @staticmethod
-    def create_ticket(data_dict):
+    def create_ticket(data_dict, requester_id):
         try:
+            UserService.require_admin(requester_id)
             return Ticket.create(data_dict)
         except ConcertInException:
             raise

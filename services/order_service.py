@@ -6,6 +6,7 @@ Menyembunyikan kompleksitas pembuatan order dan relasi komposisi.
 from models.order import Order
 from models.order_item import OrderItem
 from services.ticket_service import TicketService
+from services.user_service import UserService
 from utils.exceptions import ConcertInException, OrderNotFoundException
 
 
@@ -71,11 +72,14 @@ class OrderService:
             raise ConcertInException(f"Gagal mengambil order: {e}")
 
     @staticmethod
-    def get_all_orders():
+    def get_all_orders(requester_id):
         try:
+            UserService.require_admin(requester_id)
             from repositories.json_repository import JsonRepository
             all_data = JsonRepository.find_all("orders.json")
             return [Order.from_dict(d) for d in all_data]
+        except ConcertInException:
+            raise
         except Exception as e:
             raise ConcertInException(f"Gagal mengambil semua order: {e}")
 

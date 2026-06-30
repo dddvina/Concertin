@@ -18,14 +18,10 @@ from services.concert_service import ConcertService
 from services.ticket_service import TicketService
 from services.order_service import OrderService
 from services.payment_service import PaymentService
-from utils.exceptions import ConcertInException
+from utils.exceptions import ConcertInException, UnauthorizedException
 
 
 class APIRequestHandler(SimpleHTTPRequestHandler):
-    """
-    Handler HTTP yang melayani file statis dari folder frontend
-    sekaligus menyediakan endpoint API JSON di path /api/*.
-    """
 
     # Map folder frontend sebagai root untuk file statis
     FRONTEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend")
@@ -84,12 +80,14 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
                 user_id = path.split("/api/orders/user/")[1]
                 self._handle_get_orders_by_user(user_id)
             elif path == "/api/orders":
-                self._handle_get_all_orders()
+                self._handle_get_all_orders(params)
             elif path == "/api/statistics":
                 self._handle_get_statistics()
             else:
                 # Serve file statis dari folder frontend
                 super().do_GET()
+        except UnauthorizedException as e:
+            self._send_json({"success": False, "error": str(e)}, 403)
         except ConcertInException as e:
             self._send_json({"success": False, "error": str(e)}, 400)
         except Exception as e:
@@ -122,6 +120,8 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
                 self._handle_validate_ticket(body)
             else:
                 self._send_json({"success": False, "error": "Endpoint tidak ditemukan."}, 404)
+        except UnauthorizedException as e:
+            self._send_json({"success": False, "error": str(e)}, 403)
         except ConcertInException as e:
             self._send_json({"success": False, "error": str(e)}, 400)
         except Exception as e:
@@ -242,9 +242,10 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
             result.append(o_dict)
         self._send_json({"success": True, "orders": result})
 
-    def _handle_get_all_orders(self):
-        """Ambil semua order (admin only)."""
-        orders = OrderService.get_all_orders()
+    def _handle_get_all_orders(self, params):
+        """Ambil semua order (admin only). requesterId dikirim lewat query string."""
+        requester_id = params.get("requesterId", [""])[0]
+        orders = OrderService.get_all_orders(requester_id)
         self._send_json({
             "success": True,
             "orders": [o.to_dict() for o in orders]
@@ -267,8 +268,8 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
     # ── Admin Handlers ───────────────────────────────────────
 
     def _handle_create_concert(self, body):
-        """Tambah konser baru (admin only)."""
-        concert = ConcertService.create_concert(body)
+        """Tambah konser baru (admin only). requesterId wajib dikirim di body."""
+        concert = ConcertService.create_concert(body, body.get("requesterId"))
         self._send_json({
             "success": True,
             "message": "Konser berhasil ditambahkan!",
@@ -276,8 +277,8 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
         })
 
     def _handle_create_ticket(self, body):
-        """Tambah tiket untuk konser (admin only)."""
-        ticket = TicketService.create_ticket(body)
+        """Tambah tiket untuk konser (admin only). requesterId wajib dikirim di body."""
+        ticket = TicketService.create_ticket(body, body.get("requesterId"))
         self._send_json({
             "success": True,
             "message": "Tiket berhasil ditambahkan!",
@@ -285,7 +286,9 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
         })
 
     def _handle_validate_ticket(self, body):
-        """Validasi tiket di venue (admin only)."""
+        """Validasi tiket di venue (admin only). requesterId wajib dikirim di body."""
+        UserService.require_admin(body.get("requesterId"))
+
         from repositories.json_repository import JsonRepository
         kode = body.get("ticketCode", "")
         items_data = JsonRepository.find_all("order_items.json")
