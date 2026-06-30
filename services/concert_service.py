@@ -35,6 +35,28 @@ class ConcertService:
             raise ConcertInException(f"Gagal mencari konser: {e}")
 
     @staticmethod
+    def delete_concert(concert_id, requester_id):
+        """Hapus konser beserta tiket terkait (admin only)."""
+        try:
+            UserService.require_admin(requester_id)
+            # Pastikan konser ada
+            existing = Concert().getById(concert_id)
+            if not existing:
+                raise ConcertInException("Konser tidak ditemukan.")
+            # Hapus tiket terkait
+            from repositories.json_repository import JsonRepository
+            all_tickets = JsonRepository.find_all("tickets.json")
+            filtered = [t for t in all_tickets if t.get("concertId") != concert_id]
+            JsonRepository.save("tickets.json", filtered)
+            # Hapus konser
+            JsonRepository.delete("concerts.json", "concertId", concert_id)
+            return existing
+        except ConcertInException:
+            raise
+        except Exception as e:
+            raise ConcertInException(f"Gagal menghapus konser: {e}")
+
+    @staticmethod
     def get_concert_by_id(concert_id):
         try:
             result = Concert().getById(concert_id)

@@ -124,10 +124,17 @@ class NavbarRenderer {
 
         const user = AuthManager.getUser();
         if (user) {
+            const adminBtn = user.role === 'admin'
+                ? `<button class="btn btn-soft btn-sm" onclick="window.location.href='admin.html'">
+                       <i class="fas fa-gauge-high"></i> Dashboard
+                   </button>`
+                : '';
+
             actionsContainer.innerHTML = `
                 <div class="nav-user">
                     <span class="nav-user-name"><i class="fas fa-user-circle"></i> ${user.name}</span>
                 </div>
+                ${adminBtn}
                 <button class="btn btn-ghost btn-sm" onclick="window.location.href='orders.html'">
                     <i class="fas fa-receipt"></i> Pesanan
                 </button>

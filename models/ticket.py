@@ -4,10 +4,14 @@ Merepresentasikan kategori tiket untuk sebuah konser beserta manajemen kuota.
 Mewarisi BaseModel dan mengimplementasikan semua abstract method.
 """
 
+from typing import TYPE_CHECKING, Optional
 from models.base_model import BaseModel
 from repositories.json_repository import JsonRepository
 from utils.validator import Validator
 from utils.exceptions import TicketNotAvailableException, InsufficientQuotaException
+
+if TYPE_CHECKING:
+    from models.concert import Concert
 
 DB_FILE = "tickets.json"
 
@@ -15,11 +19,11 @@ DB_FILE = "tickets.json"
 class Ticket(BaseModel):
 
 
-    def __init__(self, ticketId=None, concertId="", category="REG",
-                 price=0.0, totalQuota=0, remainingQuota=None, created_at=None):
+    def __init__(self, ticketId: Optional[str] = None, concert: Optional['Concert'] = None, category: str = "REG",
+                 price: float = 0.0, totalQuota: int = 0, remainingQuota: Optional[int] = None, created_at=None):
         super().__init__(id=ticketId, created_at=created_at)
         self.__ticketId = self.id
-        self.__concertId = concertId
+        self.__concert = concert # Komposisi dari Concert
         self.__category = category
         self.__price = float(price)
         self.__totalQuota = int(totalQuota)
@@ -36,12 +40,12 @@ class Ticket(BaseModel):
         self.__ticketId = value
 
     @property
-    def concertId(self):
-        return self.__concertId
+    def concert(self):
+        return self.__concert
 
-    @concertId.setter
-    def concertId(self, value):
-        self.__concertId = value
+    @concert.setter
+    def concert(self, value):
+        self.__concert = value
 
     @property
     def category(self):
@@ -79,7 +83,8 @@ class Ticket(BaseModel):
 
     def validate(self):
         """Validasi atribut tiket."""
-        Validator.validate_not_empty(self.__concertId, "concertId")
+        if not self.__concert:
+            raise ValueError("Validasi gagal: Ticket harus memiliki objek Concert.")
         Validator.validate_enum(self.__category, ["VIP", "REG"], "category")
         Validator.validate_positive_number(self.__price, "price")
         Validator.validate_positive_number(self.__totalQuota, "totalQuota")
@@ -88,7 +93,7 @@ class Ticket(BaseModel):
         """Konversi Ticket ke dictionary."""
         return {
             "ticketId": self.__ticketId,
-            "concertId": self.__concertId,
+            "concertId": self.__concert.concertId if self.__concert else "",
             "category": self.__category,
             "price": self.__price,
             "totalQuota": self.__totalQuota,
@@ -98,10 +103,16 @@ class Ticket(BaseModel):
 
     @staticmethod
     def from_dict(data):
+        from models.concert import Concert
+        
+        # Load concert dynamically
+        concert_data = JsonRepository.find_by_id("concerts.json", "concertId", data.get("concertId"))
+        concert = Concert.from_dict(concert_data) if concert_data else None
+
         """Buat instance Ticket dari dictionary."""
         return Ticket(
             ticketId=data.get("ticketId"),
-            concertId=data.get("concertId", ""),
+            concert=concert,
             category=data.get("category", "REG"),
             price=data.get("price", 0.0),
             totalQuota=data.get("totalQuota", 0),
@@ -110,7 +121,8 @@ class Ticket(BaseModel):
         )
 
     def __str__(self):
-        return (f"Ticket(id={self.__ticketId}, concert={self.__concertId}, "
+        c_id = self.__concert.concertId if self.__concert else "Unknown"
+        return (f"Ticket(id={self.__ticketId}, concert={c_id}, "
                 f"category={self.__category}, price=Rp{self.__price:,.0f}, "
                 f"remaining={self.__remainingQuota}/{self.__totalQuota})")
 
@@ -138,16 +150,15 @@ class Ticket(BaseModel):
         JsonRepository.update(DB_FILE, "ticketId", self.__ticketId, self.to_dict())
         return True
 
-    def getByConcert(self, concert_id):
+    def getByConcert(self, concert_obj):
         all_data = JsonRepository.find_all(DB_FILE)
-        return [Ticket.from_dict(d) for d in all_data if d.get("concertId") == concert_id]
-    
-    def loadConcert(self):
-        from models.concert import Concert  
-        data = JsonRepository.find_by_id("concerts.json", "concertId", self.__concertId)
-        self.__concert = Concert.from_dict(data) if data else None
-        return self.__concert
-
+        results = []
+        for d in all_data:
+            if d.get("concertId") == concert_obj.concertId:
+                t = Ticket.from_dict(d)
+                t.concert = concert_obj
+                results.append(t)
+        return results
 
     # ── Static Methods ──────────────────────────────────────
 
@@ -161,8 +172,12 @@ class Ticket(BaseModel):
     @classmethod
     def create(cls, data_dict):
         """Factory method: buat dan simpan Ticket baru."""
+        from models.concert import Concert
+        concert_data = JsonRepository.find_by_id("concerts.json", "concertId", data_dict.get("concertId"))
+        concert = Concert.from_dict(concert_data) if concert_data else None
+
         ticket = cls(
-            concertId=data_dict.get("concertId", ""),
+            concert=concert,
             category=data_dict.get("category", "REG"),
             price=data_dict.get("price", 0.0),
             totalQuota=data_dict.get("totalQuota", 0),

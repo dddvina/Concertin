@@ -29,8 +29,13 @@ class Concert(BaseModel):
             self.__dateTime = dateTime
         self.__genre = genre
         self.__status = status
+        self.__tickets = [] # Komposisi Ticket
 
     # ── Properties ──────────────────────────────────────────
+
+    @property
+    def tickets(self):
+        return self.__tickets
 
     @property
     def concertId(self):
@@ -145,6 +150,12 @@ class Concert(BaseModel):
                 f"artists=[{artists}], venue={self.__venueName}, "
                 f"date={self.__dateTime.strftime('%Y-%m-%d %H:%M')}, "
                 f"genre={self.__genre}, status={self.__status})")
+
+    def loadTickets(self):
+        """Ambil semua object Ticket (Komposisi) untuk konser ini."""
+        from models.ticket import Ticket
+        self.__tickets = Ticket().getByConcert(self)
+        return self.__tickets
 
     def getAll(self):
         """Ambil semua konser dari database."""

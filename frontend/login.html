@@ -45,7 +45,13 @@
                 const data = await APIClient.post('/api/auth/login', { email, password });
                 AuthManager.setUser(data.user);
                 Toast.success('Login berhasil!');
-                setTimeout(() => window.location.href = 'index.html', 1000);
+                setTimeout(() => {
+                    if (data.user.role === 'admin') {
+                        window.location.href = 'admin.html';
+                    } else {
+                        window.location.href = 'index.html';
+                    }
+                }, 1000);
             } catch (err) {
                 Toast.error(err.message);
                 btn.disabled = false;

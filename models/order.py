@@ -5,32 +5,43 @@ Mewarisi BaseModel dan mengimplementasikan semua abstract method.
 """
 
 from datetime import datetime
+from typing import TYPE_CHECKING, List, Optional
 from models.base_model import BaseModel
 from repositories.json_repository import JsonRepository
 from utils.validator import Validator
+
+if TYPE_CHECKING:
+    from models.user import User
+    from models.concert import Concert
+    from models.order_item import OrderItem
+    from models.payment import Payment
 
 DB_FILE = "orders.json"
 
 
 class Order(BaseModel):
 
-    def __init__(self, orderId=None, userId="", concertId="", totalAmount=0.0,
-                 orderDate=None, status="pending", created_at=None):
+    def __init__(self, orderId: Optional[str] = None, user: Optional['User'] = None, 
+                 concert: Optional['Concert'] = None, totalAmount: float = 0.0,
+                 orderDate=None, status: str = "pending", created_at=None):
         super().__init__(id=orderId, created_at=created_at)
         self.__orderId = self.id
-        self.__userId = userId
-        self.__concertId = concertId
+        self.__user = user        # Asosiasi ke User
+        self.__concert = concert  # Asosiasi ke Concert
         self.__totalAmount = float(totalAmount)
+        
         if orderDate is None:
             self.__orderDate = datetime.now()
         elif isinstance(orderDate, str):
             self.__orderDate = datetime.fromisoformat(orderDate)
         else:
             self.__orderDate = orderDate
+            
         self.__status = status
-        self.__user = None
-        self.__concert = None
+        
+        # Komposisi
         self.__orderItems = []
+        self.__payment = None
 
     # ── Properties ──────────────────────────────────────────
 
@@ -43,20 +54,20 @@ class Order(BaseModel):
         self.__orderId = value
 
     @property
-    def userId(self):
-        return self.__userId
+    def user(self):
+        return self.__user
 
-    @userId.setter
-    def userId(self, value):
-        self.__userId = value
+    @user.setter
+    def user(self, value):
+        self.__user = value
 
     @property
-    def concertId(self):
-        return self.__concertId
+    def concert(self):
+        return self.__concert
 
-    @concertId.setter
-    def concertId(self, value):
-        self.__concertId = value
+    @concert.setter
+    def concert(self, value):
+        self.__concert = value
 
     @property
     def totalAmount(self):
@@ -85,18 +96,28 @@ class Order(BaseModel):
     def status(self, value):
         self.__status = value
 
+    @property
+    def orderItems(self):
+        return self.__orderItems
+        
+    @property
+    def payment(self):
+        return self.__payment
+
     # ── Instance Methods ────────────────────────────────────
 
     def validate(self):
-        Validator.validate_not_empty(self.__userId, "userId")
-        Validator.validate_not_empty(self.__concertId, "concertId")
+        if not self.__user:
+            raise ValueError("Validasi gagal: Order harus memiliki objek User.")
+        if not self.__concert:
+            raise ValueError("Validasi gagal: Order harus memiliki objek Concert.")
         Validator.validate_enum(self.__status, ["pending", "paid", "cancelled"], "status")
 
     def to_dict(self):
         return {
             "orderId": self.__orderId,
-            "userId": self.__userId,
-            "concertId": self.__concertId,
+            "userId": self.__user.userId if self.__user else "",
+            "concertId": self.__concert.concertId if self.__concert else "",
             "totalAmount": self.__totalAmount,
             "orderDate": self.__orderDate.isoformat(),
             "status": self.__status,
@@ -105,10 +126,19 @@ class Order(BaseModel):
 
     @staticmethod
     def from_dict(data):
+        from models.user import User
+        from models.concert import Concert
+        
+        user_data = JsonRepository.find_by_id("users.json", "userId", data.get("userId"))
+        user = User.from_dict(user_data) if user_data else None
+        
+        concert_data = JsonRepository.find_by_id("concerts.json", "concertId", data.get("concertId"))
+        concert = Concert.from_dict(concert_data) if concert_data else None
+        
         return Order(
             orderId=data.get("orderId"),
-            userId=data.get("userId", ""),
-            concertId=data.get("concertId", ""),
+            user=user,
+            concert=concert,
             totalAmount=data.get("totalAmount", 0.0),
             orderDate=data.get("orderDate"),
             status=data.get("status", "pending"),
@@ -116,63 +146,54 @@ class Order(BaseModel):
         )
 
     def __str__(self):
-        return (f"Order(id={self.__orderId}, user={self.__userId}, "
+        u_name = self.__user.name if self.__user else "Unknown"
+        return (f"Order(id={self.__orderId}, user={u_name}, "
                 f"total=Rp{self.__totalAmount:,.0f}, status={self.__status})")
 
-    def loadUser(self):
-        from models.user import User
-        user_data = JsonRepository.find_by_id("users.json", "userId", self.__userId)
-        self.__user = User.from_dict(user_data) if user_data else None
-        return self.__user
-
-    def loadConcert(self):
-        from models.concert import Concert
-        concert = Concert().getById(self.__concertId)
-        self.__concert = concert
-        return concert
-
     def loadOrderItems(self):
-        """Ambil semua object OrderItem yang menjadi bagian dari order ini."""
+        """Ambil semua object OrderItem (Komposisi) yang menjadi bagian dari order ini."""
         from models.order_item import OrderItem
-        self.__orderItems = OrderItem.get_by_order(self.__orderId)
+        self.__orderItems = OrderItem.get_by_order(self)
         return self.__orderItems
+        
+    def loadPayment(self):
+        """Ambil object Payment (Komposisi) terkait."""
+        from models.payment import Payment
+        all_payments = JsonRepository.find_all("payments.json")
+        for pd in all_payments:
+            if pd.get("orderId") == self.__orderId:
+                self.__payment = Payment.from_dict(pd)
+                return self.__payment
+        return None
 
     def createOrder(self):
-        """Validasi user & concert terkait lewat object masing-masing, lalu simpan order."""
         self.validate()
-
-        user = self.loadUser()
-        if user is None:
-            raise ValueError(f"User dengan id '{self.__userId}' tidak ditemukan.")
-
-        concert = self.loadConcert()
-        if concert is None:
-            raise ValueError(f"Concert dengan id '{self.__concertId}' tidak ditemukan.")
-        if concert.status in ("completed", "cancelled"):
+        if self.__concert.status in ("completed", "cancelled"):
             raise ValueError(
-                f"Tidak dapat membuat order untuk concert berstatus '{concert.status}'."
+                f"Tidak dapat membuat order untuk concert berstatus '{self.__concert.status}'."
             )
-
         JsonRepository.insert(DB_FILE, self.to_dict())
         return self
 
     def markAsPaid(self):
-        """Tandai order sebagai sudah dibayar (dipanggil oleh Payment saat sukses)."""
         self.__status = "paid"
         JsonRepository.update(DB_FILE, "orderId", self.__orderId, self.to_dict())
 
     def cancelOrder(self):
-        """Batalkan order; kuota tiket dikembalikan lewat object OrderItem (yang lalu manggil Ticket)."""
         self.__status = "cancelled"
         JsonRepository.update(DB_FILE, "orderId", self.__orderId, self.to_dict())
-
+        
         items = self.loadOrderItems()
         for item in items:
             item.releaseQuota()
 
     def getByUser(self, user_id):
         all_data = JsonRepository.find_all(DB_FILE)
-        return [Order.from_dict(d) for d in all_data if d.get("userId") == user_id]
+        results = []
+        for d in all_data:
+            if d.get("userId") == user_id:
+                results.append(Order.from_dict(d))
+        return results
 
     def getStatus(self):
         return self.__status
@@ -193,9 +214,18 @@ class Order(BaseModel):
 
     @classmethod
     def create(cls, data_dict):
+        from models.user import User
+        from models.concert import Concert
+        
+        user_data = JsonRepository.find_by_id("users.json", "userId", data_dict.get("userId", ""))
+        user = User.from_dict(user_data) if user_data else None
+        
+        concert_data = JsonRepository.find_by_id("concerts.json", "concertId", data_dict.get("concertId", ""))
+        concert = Concert.from_dict(concert_data) if concert_data else None
+        
         order = cls(
-            userId=data_dict.get("userId", ""),
-            concertId=data_dict.get("concertId", ""),
+            user=user,
+            concert=concert,
             totalAmount=data_dict.get("totalAmount", 0.0),
             status=data_dict.get("status", "pending")
         )

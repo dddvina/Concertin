@@ -3,22 +3,25 @@ Model Payment untuk aplikasi ConcertIn.
 """
 
 from datetime import datetime
+from typing import TYPE_CHECKING, Optional
 from models.base_model import BaseModel
 from repositories.json_repository import JsonRepository
 from utils.validator import Validator
 from utils.exceptions import PaymentFailedException
+
+if TYPE_CHECKING:
+    from models.order import Order
 
 DB_FILE = "payments.json"
 
 
 class Payment(BaseModel):
 
-
-    def __init__(self, paymentId=None, orderId="", Method="transfer",
-                 amount=0.0, status="pending", paymentTime=None, created_at=None):
+    def __init__(self, paymentId: Optional[str] = None, order: Optional['Order'] = None, Method: str = "transfer",
+                 amount: float = 0.0, status: str = "pending", paymentTime=None, created_at=None):
         super().__init__(id=paymentId, created_at=created_at)
         self.__paymentId = self.id
-        self.__orderId = orderId
+        self.__order = order # Komposisi dari Order (atau asosiasi dua arah)
         self.__Method = Method
         self.__amount = float(amount)
         self.__status = status
@@ -40,12 +43,12 @@ class Payment(BaseModel):
         self.__paymentId = value
 
     @property
-    def orderId(self):
-        return self.__orderId
+    def order(self):
+        return self.__order
 
-    @orderId.setter
-    def orderId(self, value):
-        self.__orderId = value
+    @order.setter
+    def order(self, value):
+        self.__order = value
 
     @property
     def Method(self):
@@ -85,7 +88,8 @@ class Payment(BaseModel):
     # ── Instance Methods ────────────────────────────────────
 
     def validate(self):
-        Validator.validate_not_empty(self.__orderId, "orderId")
+        if not self.__order:
+            raise ValueError("Validasi gagal: Payment harus memiliki objek Order.")
         Validator.validate_enum(self.__Method, ["transfer", "ewallet", "qris"], "Method")
         Validator.validate_positive_number(self.__amount, "amount")
         Validator.validate_enum(self.__status, ["pending", "success", "failed"], "status")
@@ -93,7 +97,7 @@ class Payment(BaseModel):
     def to_dict(self):
         return {
             "paymentId": self.__paymentId,
-            "orderId": self.__orderId,
+            "orderId": self.__order.orderId if self.__order else "",
             "Method": self.__Method,
             "amount": self.__amount,
             "status": self.__status,
@@ -103,9 +107,17 @@ class Payment(BaseModel):
 
     @staticmethod
     def from_dict(data):
+        from models.order import Order
+        
+        # In a real ORM we would load the order, but to prevent recursion loops
+        # if Order also loads payment, we can leave it to be set.
+        # But per requirements we should try to load it.
+        order_data = JsonRepository.find_by_id("orders.json", "orderId", data.get("orderId"))
+        order = Order.from_dict(order_data) if order_data else None
+        
         return Payment(
             paymentId=data.get("paymentId"),
-            orderId=data.get("orderId", ""),
+            order=order,
             Method=data.get("Method", "transfer"),
             amount=data.get("amount", 0.0),
             status=data.get("status", "pending"),
@@ -114,7 +126,8 @@ class Payment(BaseModel):
         )
 
     def __str__(self):
-        return (f"Payment(id={self.__paymentId}, order={self.__orderId}, "
+        o_id = self.__order.orderId if self.__order else "Unknown"
+        return (f"Payment(id={self.__paymentId}, order={o_id}, "
                 f"method={self.__Method}, amount=Rp{self.__amount:,.0f}, "
                 f"status={self.__status})")
 
@@ -137,13 +150,9 @@ class Payment(BaseModel):
         self.__status = new_status
         JsonRepository.update(DB_FILE, "paymentId", self.__paymentId, self.to_dict())
 
-        if new_status == "success":
-            from models.order import Order
-            order_data = JsonRepository.find_by_id("orders.json", "orderId", self.__orderId)
-            if order_data:
-                order = Order.from_dict(order_data)
-                order.status = "paid"
-                JsonRepository.update("orders.json", "orderId", order.orderId, order.to_dict())
+        if new_status == "success" and self.__order:
+            self.__order.status = "paid"
+            JsonRepository.update("orders.json", "orderId", self.__order.orderId, self.__order.to_dict())
 
     # ── Static Methods ──────────────────────────────────────
 
@@ -161,8 +170,12 @@ class Payment(BaseModel):
 
     @classmethod
     def create(cls, data_dict):
+        from models.order import Order
+        order_data = JsonRepository.find_by_id("orders.json", "orderId", data_dict.get("orderId"))
+        order = Order.from_dict(order_data) if order_data else None
+        
         payment = cls(
-            orderId=data_dict.get("orderId", ""),
+            order=order,
             Method=data_dict.get("Method", "transfer"),
             amount=data_dict.get("amount", 0.0),
             status=data_dict.get("status", "pending")

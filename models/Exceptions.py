@@ -76,10 +76,3 @@ class DuplicateEmailException(ConcertInException):
 
     def __init__(self, message="Email sudah terdaftar."):
         super().__init__(message)
-
-
-class UnauthorizedException(ConcertInException):
-    """Exception ketika user tidak memiliki izin/role yang sesuai untuk suatu aksi."""
-
-    def __init__(self, message="Akses ditolak. Hanya admin yang dapat melakukan aksi ini."):
-        super().__init__(message)

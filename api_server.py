@@ -127,6 +127,28 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
         except Exception as e:
             self._send_json({"success": False, "error": str(e)}, 500)
 
+    # ── DELETE Requests ──────────────────────────────────────
+
+    def do_DELETE(self):
+        """Route DELETE requests ke API handler yang sesuai."""
+        parsed = urlparse(self.path)
+        path = parsed.path
+        params = parse_qs(parsed.query)
+
+        try:
+            if path.startswith("/api/concerts/"):
+                concert_id = path.split("/api/concerts/")[1]
+                requester_id = params.get("requesterId", [""])[0]
+                self._handle_delete_concert(concert_id, requester_id)
+            else:
+                self._send_json({"success": False, "error": "Endpoint tidak ditemukan."}, 404)
+        except UnauthorizedException as e:
+            self._send_json({"success": False, "error": str(e)}, 403)
+        except ConcertInException as e:
+            self._send_json({"success": False, "error": str(e)}, 400)
+        except Exception as e:
+            self._send_json({"success": False, "error": str(e)}, 500)
+
     # ── Auth Handlers ────────────────────────────────────────
 
     def _handle_login(self, body):
@@ -274,6 +296,14 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
             "success": True,
             "message": "Konser berhasil ditambahkan!",
             "concert": concert.to_dict()
+        })
+
+    def _handle_delete_concert(self, concert_id, requester_id):
+        """Hapus konser (admin only). requesterId dikirim via query string."""
+        deleted = ConcertService.delete_concert(concert_id, requester_id)
+        self._send_json({
+            "success": True,
+            "message": f"Konser '{deleted.title}' berhasil dihapus!"
         })
 
     def _handle_create_ticket(self, body):

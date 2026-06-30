@@ -14,14 +14,7 @@ DB_FILE = "users.json"
 
 class User(BaseModel):
     """
-    Model User merepresentasikan customer aplikasi.
-
-    Attributes:
-        __userId (str): Unique user identifier (sama dengan BaseModel id).
-        __name (str): Nama lengkap user.
-        __email (str): Alamat email user.
-        __password (str): Password user (plaintext).
-        __role (str): Peran user ('admin' atau 'cust').
+    Model User (Base Class).
     """
 
     def __init__(self, userId=None, name="", email="", password="", role="cust", created_at=None):
@@ -77,7 +70,6 @@ class User(BaseModel):
     # ── Instance Methods ────────────────────────────────────
 
     def register(self):
-        """Registrasi user: validasi, cek duplikat email, simpan ke database."""
         self.validate()
         all_users = JsonRepository.find_all(DB_FILE)
         for u in all_users:
@@ -86,26 +78,17 @@ class User(BaseModel):
         JsonRepository.insert(DB_FILE, self.to_dict())
 
     def login(self, email, pw):
-        """
-        Autentikasi user dengan email dan password langsung (plaintext).
-
-        Returns:
-            bool: True jika kredensial cocok.
-        """
         return self.__email == email and self.__password == pw
 
     def logout(self):
-        """Logout user (placeholder untuk session management / membersihkan state)."""
         pass
 
     def validate(self):
-        """Validasi atribut user."""
         Validator.validate_not_empty(self.__name, "name")
         Validator.validate_email(self.__email)
         Validator.validate_enum(self.__role, ["admin", "cust"], "role")
 
     def to_dict(self):
-        """Konversi User ke dictionary."""
         return {
             "userId": self.__userId,
             "name": self.__name,
@@ -117,29 +100,35 @@ class User(BaseModel):
 
     @staticmethod
     def from_dict(data):
-        """Buat instance User dari dictionary."""
-        return User(
-            userId=data.get("userId"),
-            name=data.get("name", ""),
-            email=data.get("email", ""),
-            password=data.get("password", ""),
-            role=data.get("role", "cust"),
-            created_at=data.get("created_at")
-        )
+        role = data.get("role", "cust")
+        if role == "admin":
+            return Admin(
+                userId=data.get("userId"),
+                name=data.get("name", ""),
+                email=data.get("email", ""),
+                password=data.get("password", ""),
+                created_at=data.get("created_at")
+            )
+        else:
+            return Customer(
+                userId=data.get("userId"),
+                name=data.get("name", ""),
+                email=data.get("email", ""),
+                password=data.get("password", ""),
+                created_at=data.get("created_at")
+            )
 
     def __str__(self):
-        return f"User(id={self.__userId}, name={self.__name}, email={self.__email}, role={self.__role})"
+        return f"{self.__class__.__name__}(id={self.__userId}, name={self.__name}, email={self.__email})"
 
     # ── Static Methods ──────────────────────────────────────
 
     @staticmethod
     def count_all():
-        """Hitung total jumlah user."""
         return len(JsonRepository.find_all(DB_FILE))
 
     @staticmethod
     def get_by_role(role):
-        """Ambil semua user dengan role tertentu ('admin' atau 'cust')."""
         all_data = JsonRepository.find_all(DB_FILE)
         return [User.from_dict(d) for d in all_data if d.get("role", "cust") == role]
 
@@ -147,12 +136,36 @@ class User(BaseModel):
 
     @classmethod
     def create(cls, data_dict):
-        """Factory method: buat dan registrasi User baru."""
-        user = cls(
-            name=data_dict.get("name", ""),
-            email=data_dict.get("email", ""),
-            password=data_dict.get("password", ""),
-            role=data_dict.get("role", "cust")
-        )
+        role = data_dict.get("role", "cust")
+        if role == "admin":
+            user = Admin(
+                name=data_dict.get("name", ""),
+                email=data_dict.get("email", ""),
+                password=data_dict.get("password", "")
+            )
+        else:
+            user = Customer(
+                name=data_dict.get("name", ""),
+                email=data_dict.get("email", ""),
+                password=data_dict.get("password", "")
+            )
         user.register()
         return user
+
+
+class Admin(User):
+    """Subclass User untuk Admin."""
+    def __init__(self, userId=None, name="", email="", password="", created_at=None):
+        super().__init__(userId, name, email, password, "admin", created_at)
+
+    def manage_system(self):
+        pass
+
+
+class Customer(User):
+    """Subclass User untuk Customer biasa."""
+    def __init__(self, userId=None, name="", email="", password="", created_at=None):
+        super().__init__(userId, name, email, password, "cust", created_at)
+
+    def view_history(self):
+        pass
