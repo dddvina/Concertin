@@ -1,0 +1,31 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run ConcertIn API Server",
+            "type": "shell",
+            "command": "python",
+            "args": ["api_server.py"],
+            "isBackground": true,
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": "^\\[API\\].*",
+                    "file": 1,
+                    "line": 2,
+                    "message": 3
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^={10,}",
+                    "endsPattern": "ConcertIn.*API Server"
+                }
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "echo": true
+            }
+        }
+    ]
+}
