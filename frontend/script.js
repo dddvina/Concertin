@@ -295,11 +295,14 @@ class ConcertApp {
             const concertId = c.concertId || '';
             const icon = icons[i % icons.length];
 
+            const iconHtml = c.imageUrl ? '' : `<i class="${icon}"></i>`;
+            const bgStyle = c.imageUrl ? `style="background: linear-gradient(to top, var(--surface-strong), transparent), url('${c.imageUrl}') center/cover;"` : '';
+
             return `
                 <article class="concert-card">
-                    <div class="card-top alt-${i % 3}">
+                    <div class="card-top alt-${i % 3}" ${bgStyle}>
                         <div class="concert-date"><strong>${day}</strong><small>${month}</small></div>
-                        <i class="${icon}"></i>
+                        ${iconHtml}
                     </div>
                     <div class="card-body">
                         <div>

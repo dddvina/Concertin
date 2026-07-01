@@ -1,8 +1,4 @@
-"""
-API Server untuk aplikasi ConcertIn.
-Menyediakan RESTful endpoint yang menghubungkan frontend dengan backend OOP.
-Menggunakan built-in http.server agar tidak perlu dependency eksternal.
-"""
+#API SERVER CONCERTIN
 
 import sys
 import os
@@ -10,7 +6,7 @@ import json
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-# Pastikan root project ada di sys.path
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from services.user_service import UserService
@@ -30,7 +26,6 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
         super().__init__(*args, directory=self.FRONTEND_DIR, **kwargs)
 
     def send_head(self):
-        """Kirim header anti-cache untuk file statis agar perubahan langsung tampil."""
         path = self.translate_path(self.path)
         if os.path.isfile(path):
             ctype = self.guess_type(path)
@@ -50,7 +45,6 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
     # ── Helper Response ──────────────────────────────────────
 
     def _send_json(self, data, status=200):
-        """Kirim response JSON dengan status code yang sesuai."""
         response_body = json.dumps(data, ensure_ascii=False, default=str).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -60,7 +54,6 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
         self.wfile.write(response_body)
 
     def _read_body(self):
-        """Baca dan parse body JSON dari request."""
         content_length = int(self.headers.get("Content-Length", 0))
         raw = self.rfile.read(content_length)
         return json.loads(raw) if raw else {}
@@ -68,7 +61,6 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
     # ── CORS Preflight ───────────────────────────────────────
 
     def do_OPTIONS(self):
-        """Handle preflight CORS requests."""
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
@@ -78,7 +70,6 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
     # ── GET Requests ─────────────────────────────────────────
 
     def do_GET(self):
-        """Route GET requests ke API handler atau file statis."""
         parsed = urlparse(self.path)
         path = parsed.path
         params = parse_qs(parsed.query)
@@ -114,7 +105,6 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
     # ── POST Requests ────────────────────────────────────────
 
     def do_POST(self):
-        """Route POST requests ke API handler yang sesuai."""
         path = urlparse(self.path).path
 
         try:
@@ -148,7 +138,6 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
     # ── DELETE Requests ──────────────────────────────────────
 
     def do_DELETE(self):
-        """Route DELETE requests ke API handler yang sesuai."""
         parsed = urlparse(self.path)
         path = parsed.path
         params = parse_qs(parsed.query)
@@ -170,7 +159,6 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
     # ── Auth Handlers ────────────────────────────────────────
 
     def _handle_login(self, body):
-        """Proses login user, kembalikan data user jika berhasil."""
         email = body.get("email", "")
         password = body.get("password", "")
         user = UserService.login(email, password)
@@ -180,7 +168,6 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
         })
 
     def _handle_register(self, body):
-        """Proses registrasi user baru."""
         user = UserService.register(
             name=body.get("name", ""),
             email=body.get("email", ""),
@@ -196,7 +183,6 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
     # ── Concert Handlers ─────────────────────────────────────
 
     def _handle_get_concerts(self, params):
-        """Ambil semua konser, dikembalikan sebagai JSON array."""
         concerts = ConcertService.get_all_concerts()
         result = []
         for c in concerts:
@@ -211,7 +197,6 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
         self._send_json({"success": True, "concerts": result})
 
     def _handle_search_concerts(self, params):
-        """Cari konser berdasarkan keyword."""
         keyword = params.get("q", [""])[0]
         concerts = ConcertService.search_concerts(keyword)
         result = []
@@ -227,7 +212,6 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
         self._send_json({"success": True, "concerts": result})
 
     def _handle_get_concert_detail(self, concert_id):
-        """Ambil detail konser beserta tiket-tiketnya."""
         concert = ConcertService.get_concert_by_id(concert_id)
         c_dict = concert.to_dict()
         tickets = TicketService.get_tickets_by_concert(concert_id)
@@ -235,7 +219,6 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
         self._send_json({"success": True, "concert": c_dict})
 
     def _handle_get_tickets_by_concert(self, concert_id):
-        """Ambil semua tiket untuk konser tertentu."""
         tickets = TicketService.get_tickets_by_concert(concert_id)
         self._send_json({
             "success": True,
@@ -245,7 +228,6 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
     # ── Order Handlers ───────────────────────────────────────
 
     def _handle_create_order(self, body):
-        """Buat order baru (harus sudah login)."""
         order = OrderService.create_order(
             user_id=body.get("userId"),
             concert_id=body.get("concertId"),
@@ -259,7 +241,6 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
         })
 
     def _handle_cancel_order(self, body):
-        """Batalkan order pending."""
         order = OrderService.cancel_order(body.get("orderId"))
         self._send_json({
             "success": True,
@@ -267,7 +248,6 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
         })
 
     def _handle_get_orders_by_user(self, user_id):
-        """Ambil semua order milik user tertentu."""
         orders = OrderService.get_orders_by_user(user_id)
         result = []
         for o in orders:
@@ -285,7 +265,6 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
         self._send_json({"success": True, "orders": result})
 
     def _handle_get_all_orders(self, params):
-        """Ambil semua order (admin only). requesterId dikirim lewat query string."""
         requester_id = params.get("requesterId", [""])[0]
         orders = OrderService.get_all_orders(requester_id)
         self._send_json({
@@ -296,7 +275,6 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
     # ── Payment Handler ──────────────────────────────────────
 
     def _handle_process_payment(self, body):
-        """Proses pembayaran untuk order tertentu."""
         payment = PaymentService.process_payment(
             order_id=body.get("orderId"),
             method=body.get("method", "transfer")
@@ -310,7 +288,6 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
     # ── Admin Handlers ───────────────────────────────────────
 
     def _handle_create_concert(self, body):
-        """Tambah konser baru (admin only). requesterId wajib dikirim di body."""
         concert = ConcertService.create_concert(body, body.get("requesterId"))
         self._send_json({
             "success": True,
@@ -319,7 +296,6 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
         })
 
     def _handle_delete_concert(self, concert_id, requester_id):
-        """Hapus konser (admin only). requesterId dikirim via query string."""
         deleted = ConcertService.delete_concert(concert_id, requester_id)
         self._send_json({
             "success": True,
@@ -327,7 +303,6 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
         })
 
     def _handle_create_ticket(self, body):
-        """Tambah tiket untuk konser (admin only). requesterId wajib dikirim di body."""
         ticket = TicketService.create_ticket(body, body.get("requesterId"))
         self._send_json({
             "success": True,
@@ -336,7 +311,6 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
         })
 
     def _handle_validate_ticket(self, body):
-        """Validasi tiket di venue (admin only). requesterId wajib dikirim di body."""
         UserService.require_admin(body.get("requesterId"))
 
         from repositories.json_repository import JsonRepository
@@ -368,7 +342,6 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
     # ── Statistics Handler ───────────────────────────────────
 
     def _handle_get_statistics(self):
-        """Ambil statistik sistem."""
         u_stats = UserService.get_statistics()
         o_stats = OrderService.get_statistics()
         t_stats = TicketService.get_statistics()
@@ -380,12 +353,10 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
     # ── Suppress log noise ───────────────────────────────────
 
     def log_message(self, format, *args):
-        """Override log untuk menampilkan request dengan format lebih bersih."""
         sys.stdout.write(f"[API] {args[0]}\n")
 
 
 def run_server(host="127.0.0.1", port=8080):
-    """Jalankan server HTTP ConcertIn."""
     server = HTTPServer((host, port), APIRequestHandler)
     print(f"\n{'='*50}")
     print(f"  [ConcertIn] API Server")

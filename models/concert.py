@@ -14,7 +14,7 @@ class Concert(BaseModel):
 
     def __init__(self, concertId=None, title="", artistLineup=None,
                  venueName="", venueAddress="", dateTime=None,
-                 genre="", status="upcoming", created_at=None):
+                 genre="", status="upcoming", imageUrl="", created_at=None):
         super().__init__(id=concertId, created_at=created_at)
         self.__concertId = self.id
         self.__title = title
@@ -29,6 +29,7 @@ class Concert(BaseModel):
             self.__dateTime = dateTime
         self.__genre = genre
         self.__status = status
+        self.__imageUrl = imageUrl
         self.__tickets = [] # Komposisi Ticket
 
     # ── Properties ──────────────────────────────────────────
@@ -104,6 +105,14 @@ class Concert(BaseModel):
     def status(self, value):
         self.__status = value
 
+    @property
+    def imageUrl(self):
+        return self.__imageUrl
+
+    @imageUrl.setter
+    def imageUrl(self, value):
+        self.__imageUrl = value
+
     # ── Instance Methods ────────────────────────────────────
 
     def validate(self):
@@ -126,6 +135,7 @@ class Concert(BaseModel):
             "dateTime": self.__dateTime.isoformat(),
             "genre": self.__genre,
             "status": self.__status,
+            "imageUrl": self.__imageUrl,
             "created_at": self.created_at.isoformat()
         }
 
@@ -141,6 +151,7 @@ class Concert(BaseModel):
             dateTime=data.get("dateTime"),
             genre=data.get("genre", ""),
             status=data.get("status", "upcoming"),
+            imageUrl=data.get("imageUrl", ""),
             created_at=data.get("created_at")
         )
 
@@ -201,7 +212,8 @@ class Concert(BaseModel):
             venueAddress=data_dict.get("venueAddress", ""),
             dateTime=data_dict.get("dateTime"),
             genre=data_dict.get("genre", ""),
-            status=data_dict.get("status", "upcoming")
+            status=data_dict.get("status", "upcoming"),
+            imageUrl=data_dict.get("imageUrl", "")
         )
         concert.validate()
         JsonRepository.insert(DB_FILE, concert.to_dict())

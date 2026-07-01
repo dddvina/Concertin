@@ -1,18 +1,12 @@
-"""
-Modul JSON Repository untuk aplikasi ConcertIn.
-Menyediakan persistence data menggunakan file JSON sebagai database lokal.
-Semua operasi file dibungkus try-except untuk error handling.
-"""
+# Modul JSON Repository untuk aplikasi ConcertIn.Semua operasi file dibungkus try-except untuk error handling.
+
 
 import json
 import os
 
 
 class JsonRepository:
-    """
-    Repository class untuk penyimpanan data berbasis JSON.
-    Menangani semua operasi CRUD pada file JSON di folder database.
-    """
+
 
     __base_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "database"
@@ -27,10 +21,6 @@ class JsonRepository:
     def load(cls, filename):
         """
         Memuat semua record dari file JSON.
-
-        Args:
-            filename (str): Nama file JSON.
-
         Returns:
             list: Daftar record (dict). Mengembalikan list kosong jika error.
         """
@@ -49,9 +39,6 @@ class JsonRepository:
     def save(cls, filename, data):
         """
         Menyimpan list record ke file JSON.
-
-        Args:
-            filename (str): Nama file JSON.
             data (list): Daftar record yang akan disimpan.
         """
         try:
@@ -82,7 +69,7 @@ class JsonRepository:
 
     @classmethod
     def find_all(cls, filename):
-        """Mengambil semua record dari file JSON."""
+        """read"""
         try:
             return cls.load(filename)
         except Exception as e:
@@ -91,7 +78,7 @@ class JsonRepository:
 
     @classmethod
     def insert(cls, filename, record):
-        """Menyisipkan record baru ke file JSON."""
+        """create"""
         try:
             data = cls.load(filename)
             data.append(record)
@@ -101,7 +88,7 @@ class JsonRepository:
 
     @classmethod
     def update(cls, filename, id_field, id_value, updated_record):
-        """Memperbarui record yang ada di file JSON berdasarkan ID."""
+        """update."""
         try:
             data = cls.load(filename)
             for i, record in enumerate(data):
@@ -114,7 +101,7 @@ class JsonRepository:
 
     @classmethod
     def delete(cls, filename, id_field, id_value):
-        """Menghapus record dari file JSON berdasarkan ID."""
+        """delete"""
         try:
             data = cls.load(filename)
             data = [r for r in data if r.get(id_field) != id_value]

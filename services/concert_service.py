@@ -11,7 +11,7 @@ class ConcertService:
     """Layer service untuk entitas Concert."""
 
     @staticmethod
-    def create_concert(data_dict, requester_id):
+    def create_concert(data_dict, requester_id):  #Create
         try:
             UserService.require_admin(requester_id)
             return Concert.create(data_dict)
@@ -21,7 +21,7 @@ class ConcertService:
             raise ConcertInException(f"Gagal membuat konser: {e}")
 
     @staticmethod
-    def get_all_concerts():
+    def get_all_concerts(): #read
         try:
             return Concert().getAll()
         except Exception as e:
@@ -35,20 +35,17 @@ class ConcertService:
             raise ConcertInException(f"Gagal mencari konser: {e}")
 
     @staticmethod
-    def delete_concert(concert_id, requester_id):
+    def delete_concert(concert_id, requester_id): #Delete
         """Hapus konser beserta tiket terkait (admin only)."""
         try:
             UserService.require_admin(requester_id)
-            # Pastikan konser ada
             existing = Concert().getById(concert_id)
             if not existing:
                 raise ConcertInException("Konser tidak ditemukan.")
-            # Hapus tiket terkait
             from repositories.json_repository import JsonRepository
             all_tickets = JsonRepository.find_all("tickets.json")
             filtered = [t for t in all_tickets if t.get("concertId") != concert_id]
             JsonRepository.save("tickets.json", filtered)
-            # Hapus konser
             JsonRepository.delete("concerts.json", "concertId", concert_id)
             return existing
         except ConcertInException:

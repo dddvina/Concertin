@@ -166,7 +166,7 @@ class Order(BaseModel):
                 return self.__payment
         return None
 
-    def createOrder(self):
+    def createOrder(self): #CREATE
         self.validate()
         if self.__concert.status in ("completed", "cancelled"):
             raise ValueError(
@@ -175,11 +175,11 @@ class Order(BaseModel):
         JsonRepository.insert(DB_FILE, self.to_dict())
         return self
 
-    def markAsPaid(self):
+    def markAsPaid(self): #UPDATE
         self.__status = "paid"
         JsonRepository.update(DB_FILE, "orderId", self.__orderId, self.to_dict())
 
-    def cancelOrder(self):
+    def cancelOrder(self): 
         self.__status = "cancelled"
         JsonRepository.update(DB_FILE, "orderId", self.__orderId, self.to_dict())
         
@@ -187,7 +187,7 @@ class Order(BaseModel):
         for item in items:
             item.releaseQuota()
 
-    def getByUser(self, user_id):
+    def getByUser(self, user_id): #READ
         all_data = JsonRepository.find_all(DB_FILE)
         results = []
         for d in all_data:
