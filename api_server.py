@@ -273,9 +273,11 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
         for o in orders:
             o_dict = o.to_dict()
             try:
-                concert = ConcertService.get_concert_by_id(o.concertId)
-                o_dict["concertTitle"] = concert.title
-                o_dict["concertDate"] = concert.dateTime.isoformat()
+                if o.concert:
+                    o_dict["concertTitle"] = o.concert.title
+                    o_dict["concertDate"] = o.concert.dateTime.isoformat()
+                else:
+                    raise Exception("Concert not found")
             except Exception:
                 o_dict["concertTitle"] = "Konser Tidak Diketahui"
                 o_dict["concertDate"] = ""

@@ -22,5 +22,13 @@
     "quantity": 3,
     "subTotal": 4500000.0,
     "created_at": "2026-06-25T22:19:27.566236"
+  },
+  {
+    "itemId": "07a72382-b6c2-476b-af1d-a93d1dc9583e",
+    "orderId": "d36a421f-66c7-490b-94f9-9805fc709d23",
+    "ticketId": "515a8ac5-45b7-4360-9c16-84c9fa11628d",
+    "quantity": 1,
+    "subTotal": 6000000.0,
+    "created_at": "2026-07-01T10:15:49.879013"
   }
 ]

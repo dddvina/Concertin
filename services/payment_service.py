@@ -21,9 +21,12 @@ class PaymentService:
 
             amount = float(order_data.get("totalAmount", 0))
 
+            from models.order import Order
+            order = Order.from_dict(order_data)
+
             # Komposisi: Buat Payment terkait Order
             payment = Payment(
-                orderId=order_id,
+                order=order,
                 Method=method,
                 amount=amount,
                 status="pending"

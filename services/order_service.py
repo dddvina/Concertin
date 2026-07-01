@@ -20,7 +20,7 @@ class OrderService:
             ticket = TicketService.reserve_ticket(ticket_id, quantity)
 
             # Buat order item dummy untuk hitung subtotal dengan polymorphism
-            dummy_item = OrderItem(ticketId=ticket_id, quantity=quantity)
+            dummy_item = OrderItem(ticket=ticket, quantity=quantity)
             subtotal = dummy_item.calcSubtotal()
 
             # Buat Order
@@ -33,7 +33,7 @@ class OrderService:
 
             # Buat OrderItem (Komposisi)
             OrderItem.create({
-                "orderId": order.orderId,
+                "order": order,
                 "ticketId": ticket_id,
                 "quantity": quantity,
                 "subTotal": subtotal
