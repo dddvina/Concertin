@@ -5,7 +5,6 @@ Semua exception mewarisi dari base ConcertInException.
 
 
 class ConcertInException(Exception):
-    """Base exception untuk seluruh error di aplikasi ConcertIn."""
 
     def __init__(self, message="Terjadi kesalahan pada sistem ConcertIn."):
         self.__message = message

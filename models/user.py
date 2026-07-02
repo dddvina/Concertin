@@ -67,7 +67,6 @@ class User(BaseModel):
     def role(self, value):
         self.__role = value
 
-    # ── Instance Methods ────────────────────────────────────
 
     def register(self):
         self.validate()
@@ -98,7 +97,7 @@ class User(BaseModel):
             "created_at": self.created_at.isoformat()
         }
 
-    @staticmethod
+    @staticmethod  
     def from_dict(data):
         role = data.get("role", "cust")
         if role == "admin":
@@ -152,7 +151,7 @@ class User(BaseModel):
         user.register()
         return user
 
-
+ #inheritance
 class Admin(User):
     """Subclass User untuk Admin."""
     def __init__(self, userId=None, name="", email="", password="", created_at=None):

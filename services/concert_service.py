@@ -11,7 +11,7 @@ class ConcertService:
     """Layer service untuk entitas Concert."""
 
     @staticmethod
-    def create_concert(data_dict, requester_id):  #Create
+    def create_concert(data_dict, requester_id):  #Create dan penerapan exception handling
         try:
             UserService.require_admin(requester_id)
             return Concert.create(data_dict)

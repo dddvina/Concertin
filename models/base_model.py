@@ -1,8 +1,4 @@
-"""
-Abstract base class BaseModel untuk aplikasi ConcertIn.
-Menjadi parent class untuk semua model, memaksakan interface konsisten
-melalui abstract methods (to_dict, from_dict, validate) dan menyediakan atribut umum.
-"""
+
 
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -22,12 +18,12 @@ class BaseModel(ABC):
 
     @property
     def id(self):
-        """Getter untuk unique identifier."""
+        """Getter"""
         return self.__id
 
     @id.setter
     def id(self, value):
-        """Setter untuk unique identifier."""
+        """Setter"""
         self.__id = value
 
     @property

@@ -86,5 +86,50 @@
     "status": "upcoming",
     "imageUrl": "assets/bts.jpg",
     "created_at": "2026-06-30T21:54:11.473725"
+  },
+  {
+    "concertId": "71a7abe7-cc31-4dcf-a1ba-8824338b919b",
+    "title": "Bakrie Fest",
+    "artistLineup": [
+      "Nadin Amizah",
+      "Reality Club",
+      "Bts",
+      "Blackpink"
+    ],
+    "venueName": "Plaza Festival",
+    "venueAddress": "Epicentrum",
+    "dateTime": "2027-02-02T11:02:00",
+    "genre": "K-Pop",
+    "status": "upcoming",
+    "imageUrl": "",
+    "created_at": "2026-07-02T11:02:36.699123"
+  },
+  {
+    "concertId": "5047cdf6-6d6f-4a5c-9511-3b091826cb60",
+    "title": "Hello Monster",
+    "artistLineup": [
+      "Baby Monster"
+    ],
+    "venueName": "JIS",
+    "venueAddress": "Jakarta Pusat",
+    "dateTime": "2026-07-17T23:23:00",
+    "genre": "K-Pop",
+    "status": "upcoming",
+    "imageUrl": "assets/a8f054de7fc448828cbeab405dd016c8.jpg",
+    "created_at": "2026-07-02T23:25:43.544414"
+  },
+  {
+    "concertId": "3a84f311-6c1b-4909-82c1-190647811667",
+    "title": "Birthday fest",
+    "artistLineup": [
+      "Ayu tingting"
+    ],
+    "venueName": "ICE BSD",
+    "venueAddress": "BSD",
+    "dateTime": "2026-07-04T23:27:00",
+    "genre": "Rock",
+    "status": "upcoming",
+    "imageUrl": "",
+    "created_at": "2026-07-02T23:27:10.958178"
   }
 ]

@@ -173,6 +173,25 @@
                             <option value="Hip-Hop">Hip-Hop</option>
                         </select>
                     </div>
+
+                    <!-- Image Upload -->
+                    <div class="form-group full-width">
+                        <label for="concertImageInput"><i class="fas fa-image"></i> Poster Konser <span class="label-optional">(opsional)</span></label>
+                        <div class="image-upload-area" id="imageUploadArea">
+                            <input type="file" id="concertImageInput" accept="image/*" class="image-file-input">
+                            <div class="image-upload-placeholder" id="imageUploadPlaceholder">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Klik atau <strong>drag & drop</strong> gambar ke sini</p>
+                                <span>PNG, JPG, WEBP — Maks. 5 MB</span>
+                            </div>
+                            <div class="image-preview-wrap" id="imagePreviewWrap" style="display:none;">
+                                <img id="concertImagePreview" src="" alt="Preview poster konser">
+                                <button type="button" class="image-remove-btn" id="imageRemoveBtn" title="Hapus gambar">
+                                    <i class="fas fa-xmark"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="form-actions">

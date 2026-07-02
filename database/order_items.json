@@ -30,5 +30,21 @@
     "quantity": 1,
     "subTotal": 6000000.0,
     "created_at": "2026-07-01T10:15:49.879013"
+  },
+  {
+    "itemId": "d6e4f93d-f1e6-4069-8a8b-b3e5399e1f65",
+    "orderId": "de19428a-3f9d-44f8-8aa2-449af170072e",
+    "ticketId": "t005-kpop-vip-0000-000000000000",
+    "quantity": 3,
+    "subTotal": 4500000.0,
+    "created_at": "2026-07-01T11:40:23.880170"
+  },
+  {
+    "itemId": "4925e333-6d6e-4b27-8328-ccd1437a24ee",
+    "orderId": "ac7176fa-d8c0-4aa0-8c60-fabf5261ead5",
+    "ticketId": "515a8ac5-45b7-4360-9c16-84c9fa11628d",
+    "quantity": 4,
+    "subTotal": 24000000.0,
+    "created_at": "2026-07-02T10:47:51.425901"
   }
 ]

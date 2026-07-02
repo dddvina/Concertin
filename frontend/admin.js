@@ -9,6 +9,7 @@ class AdminApp {
     constructor() {
         this.concerts = [];
         this._pendingDeleteId = null;
+        this._selectedImageFile = null;
     }
 
     async init() {
@@ -30,6 +31,7 @@ class AdminApp {
         this._bindForms();
         this._bindDeleteModal();
         this._bindLogout();
+        this._bindImageUpload();
 
         await this._loadAll();
     }
@@ -122,6 +124,90 @@ class AdminApp {
                 if (target === 'delete-concert') this._renderDeleteTable();
                 if (target === 'overview') this._loadAll();
             });
+        });
+    }
+
+    // ── Image Upload Binding ─────────────────────────────
+    _bindImageUpload() {
+        const area = document.getElementById('imageUploadArea');
+        const input = document.getElementById('concertImageInput');
+        const placeholder = document.getElementById('imageUploadPlaceholder');
+        const previewWrap = document.getElementById('imagePreviewWrap');
+        const previewImg = document.getElementById('concertImagePreview');
+        const removeBtn = document.getElementById('imageRemoveBtn');
+        if (!area || !input) return;
+
+        const showPreview = (file) => {
+            if (!file || !file.type.startsWith('image/')) {
+                Toast.error('File harus berupa gambar (PNG/JPG/WEBP).');
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                Toast.error('Ukuran gambar maksimal 5 MB.');
+                return;
+            }
+            this._selectedImageFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImg.src = e.target.result;
+                placeholder.style.display = 'none';
+                previewWrap.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        };
+
+        const clearPreview = () => {
+            this._selectedImageFile = null;
+            input.value = '';
+            previewImg.src = '';
+            previewWrap.style.display = 'none';
+            placeholder.style.display = 'flex';
+        };
+
+        input.addEventListener('change', () => {
+            if (input.files[0]) showPreview(input.files[0]);
+        });
+
+        if (removeBtn) {
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                clearPreview();
+            });
+        }
+
+        // Drag & drop
+        area.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            area.classList.add('drag-over');
+        });
+        area.addEventListener('dragleave', () => area.classList.remove('drag-over'));
+        area.addEventListener('drop', (e) => {
+            e.preventDefault();
+            area.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file) showPreview(file);
+        });
+
+        // Expose clearPreview for form reset
+        this._clearImagePreview = clearPreview;
+    }
+
+    // ── Upload image ke server ───────────────────────────
+    async _uploadImage(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const base64 = e.target.result; // data:image/...;base64,...
+                    const ext = file.name.split('.').pop().toLowerCase() || 'jpg';
+                    const data = await APIClient.post('/api/upload', { base64, ext });
+                    resolve(data.imageUrl || '');
+                } catch (err) {
+                    reject(err);
+                }
+            };
+            reader.onerror = () => reject(new Error('Gagal membaca file gambar.'));
+            reader.readAsDataURL(file);
         });
     }
 
@@ -339,6 +425,13 @@ class AdminApp {
         btn.innerHTML = '<i class="fas fa-spinner"></i> Menyimpan...';
 
         try {
+            // Upload gambar jika ada, kalau tidak imageUrl dikosongkan
+            let imageUrl = '';
+            if (this._selectedImageFile) {
+                btn.innerHTML = '<i class="fas fa-spinner"></i> Mengunggah gambar...';
+                imageUrl = await this._uploadImage(this._selectedImageFile);
+            }
+
             await APIClient.post('/api/concerts', {
                 requesterId: user.userId,
                 title,
@@ -347,11 +440,13 @@ class AdminApp {
                 venueAddress: address,
                 dateTime,
                 genre,
-                status: 'upcoming'
+                status: 'upcoming',
+                imageUrl
             });
 
             Toast.success('🎉 Konser berhasil ditambahkan!');
             document.getElementById('addConcertForm').reset();
+            if (this._clearImagePreview) this._clearImagePreview();
 
             // Reload data
             await this._loadConcerts();

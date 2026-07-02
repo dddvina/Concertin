@@ -3,6 +3,8 @@
 import sys
 import os
 import json
+import base64
+import uuid
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
@@ -126,6 +128,8 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
                 self._handle_create_ticket(body)
             elif path == "/api/tickets/validate":
                 self._handle_validate_ticket(body)
+            elif path == "/api/upload":
+                self._handle_upload_image(body)
             else:
                 self._send_json({"success": False, "error": "Endpoint tidak ditemukan."}, 404)
         except UnauthorizedException as e:
@@ -293,6 +297,45 @@ class APIRequestHandler(SimpleHTTPRequestHandler):
             "success": True,
             "message": "Konser berhasil ditambahkan!",
             "concert": concert.to_dict()
+        })
+
+    def _handle_upload_image(self, body):
+        """Decode base64 image dan simpan ke frontend/assets/."""
+        base64_data = body.get("base64", "")
+        ext = body.get("ext", "jpg").lower()
+
+        # Validasi extension
+        allowed = {"jpg", "jpeg", "png", "webp", "gif"}
+        if ext not in allowed:
+            self._send_json({"success": False, "error": "Format file tidak didukung."}, 400)
+            return
+
+        # Strip data URI prefix jika ada
+        if "," in base64_data:
+            base64_data = base64_data.split(",", 1)[1]
+
+        try:
+            image_bytes = base64.b64decode(base64_data)
+        except Exception:
+            self._send_json({"success": False, "error": "Data gambar tidak valid."}, 400)
+            return
+
+        # Batas ukuran 5 MB
+        if len(image_bytes) > 5 * 1024 * 1024:
+            self._send_json({"success": False, "error": "Ukuran gambar melebihi 5 MB."}, 400)
+            return
+
+        filename = f"{uuid.uuid4().hex}.{ext}"
+        assets_dir = os.path.join(self.FRONTEND_DIR, "assets")
+        os.makedirs(assets_dir, exist_ok=True)
+        save_path = os.path.join(assets_dir, filename)
+
+        with open(save_path, "wb") as f:
+            f.write(image_bytes)
+
+        self._send_json({
+            "success": True,
+            "imageUrl": f"assets/{filename}"
         })
 
     def _handle_delete_concert(self, concert_id, requester_id):
