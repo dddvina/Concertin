@@ -11,7 +11,7 @@ from utils.validator import Validator
 from utils.exceptions import TicketNotAvailableException, InsufficientQuotaException
 
 if TYPE_CHECKING:
-    from models.concert import Concert
+    from models.concert import Concert  #class concert
 
 DB_FILE = "tickets.json"
 

@@ -1,7 +1,5 @@
 """
 Model Order untuk aplikasi ConcertIn.
-Merepresentasikan pesanan tiket oleh user.
-Mewarisi BaseModel dan mengimplementasikan semua abstract method.
 """
 
 from datetime import datetime
@@ -126,7 +124,7 @@ class Order(BaseModel):
 
     @staticmethod
     def from_dict(data):
-        from models.user import User
+        from models.user import User #User class
         from models.concert import Concert
         
         user_data = JsonRepository.find_by_id("users.json", "userId", data.get("userId"))
@@ -151,14 +149,13 @@ class Order(BaseModel):
                 f"total=Rp{self.__totalAmount:,.0f}, status={self.__status})")
 
     def loadOrderItems(self):
-        """Ambil semua object OrderItem (Komposisi) yang menjadi bagian dari order ini."""
+        # OrderItem (Komposisi)
         from models.order_item import OrderItem
         self.__orderItems = OrderItem.get_by_order(self)
         return self.__orderItems
         
     def loadPayment(self):
-        """Ambil object Payment (Komposisi) terkait."""
-        from models.payment import Payment
+        from models.payment import Payment #class Payment
         all_payments = JsonRepository.find_all("payments.json")
         for pd in all_payments:
             if pd.get("orderId") == self.__orderId:
@@ -231,4 +228,4 @@ class Order(BaseModel):
         )
         order.validate()
         JsonRepository.insert(DB_FILE, order.to_dict())
-        return order
+        return order 

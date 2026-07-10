@@ -10,7 +10,7 @@ from utils.validator import Validator
 from utils.exceptions import PaymentFailedException
 
 if TYPE_CHECKING:
-    from models.order import Order
+    from models.order import Order  #class order
 
 DB_FILE = "payments.json"
 

@@ -116,7 +116,6 @@ class Concert(BaseModel):
     # ── Instance Methods ────────────────────────────────────
 
     def validate(self):
-        """Validasi atribut konser."""
         Validator.validate_not_empty(self.__title, "title")
         Validator.validate_not_empty(self.__venueName, "venueName")
         Validator.validate_not_empty(self.__venueAddress, "venueAddress")
@@ -125,7 +124,6 @@ class Concert(BaseModel):
                                 ["upcoming", "ongoing", "completed", "cancelled"], "status")
 
     def to_dict(self):
-        """Konversi Concert ke dictionary."""
         return {
             "concertId": self.__concertId,
             "title": self.__title,
@@ -163,13 +161,11 @@ class Concert(BaseModel):
                 f"genre={self.__genre}, status={self.__status})")
 
     def loadTickets(self):
-        """Ambil semua object Ticket (Komposisi) untuk konser ini."""
         from models.ticket import Ticket
         self.__tickets = Ticket().getByConcert(self)
         return self.__tickets
 
     def getAll(self):
-        """Ambil semua konser dari database."""
         all_data = JsonRepository.find_all(DB_FILE)
         return [Concert.from_dict(d) for d in all_data]
 

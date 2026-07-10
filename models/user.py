@@ -153,7 +153,7 @@ class User(BaseModel):
 
  #inheritance
 class Admin(User):
-    """Subclass User untuk Admin."""
+    #Subclass User untuk Admin.
     def __init__(self, userId=None, name="", email="", password="", created_at=None):
         super().__init__(userId, name, email, password, "admin", created_at)
 
@@ -162,7 +162,7 @@ class Admin(User):
 
 
 class Customer(User):
-    """Subclass User untuk Customer biasa."""
+    #Subclass User untuk Customer biasa.
     def __init__(self, userId=None, name="", email="", password="", created_at=None):
         super().__init__(userId, name, email, password, "cust", created_at)
 
