@@ -1,0 +1,3 @@
+# ConcertIn Python dependencies
+# App hanya menggunakan stdlib Python, tidak ada third-party package
+# File ini diperlukan agar Vercel mendeteksi project sebagai Python

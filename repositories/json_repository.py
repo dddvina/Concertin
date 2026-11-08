@@ -7,10 +7,15 @@ import os
 
 class JsonRepository:
 
-
+    # Cari folder database/ dari root project.
+    # Naik satu level dari repositories/ → root project → database/
     __base_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "database"
     )
+
+    # Fallback: jika dijalankan dari Vercel /var/task/
+    if not os.path.isdir(__base_path):
+        __base_path = os.path.join(os.getcwd(), "database")
 
     @classmethod
     def __get_filepath(cls, filename):

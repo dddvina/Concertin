@@ -99,17 +99,23 @@ class APIClient {
     static BASE = '';
 
     static async request(url, options = {}) {
+        let res;
         try {
-            const res = await fetch(APIClient.BASE + url, {
+            res = await fetch(APIClient.BASE + url, {
                 headers: { 'Content-Type': 'application/json' },
                 ...options
             });
-            const data = await res.json();
-            if (!data.success) throw new Error(data.error || 'Terjadi kesalahan.');
-            return data;
-        } catch (err) {
-            throw err;
+        } catch (networkErr) {
+            throw new Error('Tidak dapat terhubung ke server. Pastikan server backend sudah dijalankan (python api_server.py).');
         }
+        let data;
+        try {
+            data = await res.json();
+        } catch (parseErr) {
+            throw new Error('Server mengembalikan respons yang tidak valid. Pastikan server backend sudah dijalankan (python api_server.py).');
+        }
+        if (!data.success) throw new Error(data.error || 'Terjadi kesalahan.');
+        return data;
     }
 
     static get(url) { return APIClient.request(url); }
